@@ -1,5 +1,0 @@
-@define-color fg #d8dee9; /* main color */
-@define-color fg2 #d8dee9; /* used for empty hover and active non-hover */
-@define-color bg #2e3440; /* main bg color (transparency effect applied after)*/
-@define-color bg2 #5f6b82; /* used for popout and empty workspaces */
-@define-color accent #88c0d0;
