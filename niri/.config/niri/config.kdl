@@ -1,0 +1,15 @@
+include "config/env.kdl"
+include "config/input.kdl"
+include "config/output.kdl"
+include "config/layout.kdl"
+include "config/colors.kdl"
+include "config/autostart.kdl"
+include "config/keybinds.kdl"
+include "animations/glide.kdl"
+
+blur {
+    passes 4
+    offset 6.0
+    noise 0.04
+    saturation 1.4
+}

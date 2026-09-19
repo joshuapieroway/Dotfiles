@@ -1,0 +1,137 @@
+layout {
+    background-color "transparent"
+    gaps 10
+    border {
+	on
+	width 4
+    }
+    focus-ring {
+	off
+    }
+}
+
+prefer-no-csd
+
+window-rule {
+    geometry-corner-radius 10
+    clip-to-geometry true
+}
+
+window-rule {
+    match is-active=false
+    opacity 0.95
+}
+
+window-rule {
+    match app-id="^kitty$"
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+window-rule {
+    match app-id="^(org.gnome.Calculator|org.kde.kcalc|qalculate-gtk|speedcrunch)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(pavucontrol|org.pulseaudio.pavucontrol|blueman-manager|nm-connection-editor|nm-applet)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^Twintaillauncher"
+    default-column-width { proportion 1.0; }
+    default-window-height { proportion 1.0; }
+}
+
+window-rule {
+    match app-id="^(org.gnome.FileRoller|file-roller|engrampa)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(imv|eog|org.gnome.eog|feh|sxiv|nsxiv)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(org.gnome.SystemMonitor|btop|htop|top)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(keepassxc|org.keepassxc.KeePassXC)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(org.gnome.Disks|gparted)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(org.gnome.tweaks|gnome-tweaks|nwg-look)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(dialog|file_dialog)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^steam_proton$" title="^UIPlatform$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^steam_proton$" title="^Endfield$"
+    default-column-width { proportion 1.0; }
+    default-window-height { proportion 1.0; }
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(swayimg)$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^(page.codeberg.lo_vely.Nucleus)$"
+    default-column-width { proportion 1.0; }
+    default-window-height { proportion 1.0; }
+}
+
+window-rule {
+    match app-id="^(org.vinegarhq.Sober|org.prismlauncher.PrismLauncher|net.lutris.Lutris|net.lutris.Lutris1)$"
+    default-column-width { proportion 1.0; }
+    default-window-height { proportion 1.0; }
+}
+
+window-rule {
+    match app-id="^steam$" title="^notificationtoasts_\\d+_desktop$"
+    open-floating true
+    default-floating-position x=0 y=0 relative-to="top-right"
+}
+
+window-rule {
+    match app-id="^steam$" title="^Friends$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^steam$"
+    exclude title="^notificationtoasts_\\d+_desktop$"
+    exclude title="^Friends$"
+    default-column-width { proportion 1.0; }
+    default-window-height { proportion 1.0; }
+}
+
+layer-rule {
+    match namespace="^wallpaper-bg$"
+    place-within-backdrop true
+}
+
+

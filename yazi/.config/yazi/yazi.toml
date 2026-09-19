@@ -1,0 +1,35 @@
+[mgr]
+show_hidden = true
+sort_by      = "natural"
+sort_dir_first = true
+
+[opener]
+edit = [
+	{ run = "nvim %s", block = true, desc = "Neovim", for = "unix" },
+]
+image = [
+	{ run = "imv %s", orphan = true, desc = "imv", for = "unix" },
+]
+video = [
+	{ run = "mpv %s", orphan = true, desc = "mpv", for = "unix" },
+]
+audio = [
+	{ run = "mpv %s", orphan = true, desc = "mpv", for = "unix" },
+]
+
+[open]
+prepend_rules = [
+	{ mime = "image/*", use = [ "image", "reveal" ] },
+	{ mime = "video/*", use = [ "video", "reveal" ] },
+	{ mime = "audio/*", use = [ "audio", "reveal" ] },
+]
+
+[[plugin.prepend_fetchers]]
+url   = "*"
+run   = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+url   = "*/"
+run   = "git"
+group = "git"
