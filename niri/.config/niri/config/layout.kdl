@@ -8,6 +8,11 @@ layout {
     focus-ring {
 	off
     }
+    preset-column-widths {
+	proportion 0.3333
+	proportion 0.5
+	proportion 0.6667
+    }
 }
 
 prefer-no-csd

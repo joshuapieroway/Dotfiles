@@ -8,6 +8,8 @@ binds {
     Mod+V { toggle-window-floating; }
     Mod+O { spawn-sh "kitty -e opencode"; }
     Mod+Shift+F { fullscreen-window; }
+    Mod+T { maximize-column; }
+    Mod+X { switch-preset-column-width; }
 
     XF86MonBrightnessDown { spawn "serpantinum" "brightness" "lower"; }
     XF86MonBrightnessUp { spawn "serpantinum" "brightness" "raise"; }

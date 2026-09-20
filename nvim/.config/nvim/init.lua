@@ -19,7 +19,14 @@ vim.opt.softtabstop = 4
 vim.opt.winborder = "rounded"
 vim.cmd.syntax("enable")
 
-vim.diagnostic.config({ float = { border = "rounded" } })
+vim.diagnostic.config({
+  float = { border = "rounded", source = "always" },
+  virtual_text = { prefix = "●", spacing = 2 },
+  signs = true,
+  underline = true,
+  update_in_insert = false,
+  severity_sort = true,
+})
 
 -- Do not load a colourscheme: the default highlight groups use the terminal
 -- background and palette, so Neovim fits the rest of this Zsh terminal.
@@ -142,13 +149,7 @@ require("lazy").setup({
       })
     end,
   },
-  { "neovim/nvim-lspconfig" },
   { "williamboman/mason.nvim", opts = { ui = { border = "rounded" } } },
-  {
-    "mason-org/mason-lspconfig.nvim",
-    dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
-    opts = { automatic_enable = true },
-  },
   {
     "nvim-treesitter/nvim-treesitter",
     lazy = false,
@@ -172,6 +173,53 @@ require("lazy").setup({
   checker = { enabled = false },
   change_detection = { notify = false },
 })
+
+-- LSP: clangd for C/C++ (native vim.lsp, no nvim-lspconfig needed)
+vim.lsp.config("clangd", {
+  cmd = {
+    "clangd",
+    "--background-index",
+    "--clang-tidy",
+    "--completion-style=detailed",
+    "--header-insertion=iwyu",
+    "--suggest-missing-includes",
+    "-j=4",
+  },
+  capabilities = require("cmp_nvim_lsp").default_capabilities(),
+})
+vim.lsp.enable("clangd")
+
+-- <leader>r — compile & run the current C++ file
+vim.keymap.set("n", "<leader>r", function()
+  local file = vim.fn.expand("%:p")
+  local ft = vim.bo.filetype
+  if ft ~= "cpp" and ft ~= "c" then
+    vim.notify("Not a C/C++ file", vim.log.levels.WARN)
+    return
+  end
+  vim.cmd("write")
+  local out = vim.fn.expand("%:p:r")
+  local compiler = ft == "cpp" and "g++" or "gcc"
+  local flags = { "-Wall", "-Wextra", "-std=c++23", "-O2", "-o", out, file }
+  if ft == "c" then flags = { "-Wall", "-Wextra", "-std=c17", "-O2", "-o", out, file } end
+
+  vim.notify("Compiling " .. vim.fn.fnamemodify(file, ":t") .. " ...", vim.log.levels.INFO)
+  local output = vim.fn.systemlist({ compiler, unpack(flags) })
+  local exit = vim.v.shell_error
+
+  if exit ~= 0 then
+    vim.fn.setqflist({}, "r", {
+      title = "Compile errors",
+      lines = output,
+    })
+    vim.cmd("copen")
+    vim.notify("Compilation failed (" .. #output .. " errors)", vim.log.levels.ERROR)
+    return
+  end
+
+  vim.notify("Running " .. vim.fn.fnamemodify(out, ":t") .. " ...", vim.log.levels.INFO)
+  vim.cmd("botright split | resize 12 | terminal " .. vim.fn.shellescape(out))
+end, { desc = "Compile & run C++ file" })
 
 -- :Cd [directory] changes Neovim's working directory and opens that folder.
 vim.api.nvim_create_user_command("Cd", function(opts)
