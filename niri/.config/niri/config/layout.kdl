@@ -27,8 +27,104 @@ window-rule {
     opacity 0.95
 }
 
+// ── Blur: Terminals ───────────────────────────────────────────────
 window-rule {
     match app-id="^kitty$"
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+window-rule {
+    match app-id="^(ghostty|com.mitchellh.ghostty|org.wezfurlong.wezterm|Alacritty|foot|kitty|yazi)$"
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Browsers ────────────────────────────────────────────────
+window-rule {
+    match app-id="^(firefox|org.mozilla.firefox|librewolf|floorp|zen|chromium|google-chrome|google-chrome-stable|brave|brave-browser)$"
+    draw-border-with-background false
+    opacity 0.92
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: File Managers ───────────────────────────────────────────
+window-rule {
+    match app-id="^(org.gnome.Nautilus|nautilus|thunar|dolphin|nemo|org.gnome.Files)$"
+    draw-border-with-background false
+    opacity 0.94
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Communication & Mail ────────────────────────────────────
+window-rule {
+    match app-id="^(vesktop|Vesktop|discord|Discord|com.discordapp.Discord|org.mozilla.Thunderbird|thunderbird|thunderbird-esr)$"
+    draw-border-with-background false
+    opacity 0.93
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Media / Viewers ─────────────────────────────────────────
+window-rule {
+    match app-id="^(mpv|imv|eog|org.gnome.eog|feh|sxiv|nsxiv|swayimg|vlc|celluloid)$"
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Music / Spotify ─────────────────────────────────────────
+window-rule {
+    match app-id="^(spotify|spotify-launcher|Spicetify|com.spotify.Client)$"
+    draw-border-with-background false
+    opacity 0.93
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Notes / Editors / IDE ───────────────────────────────────
+window-rule {
+    match app-id="^(md.obsidian.Obsidian|obsidian|code|Code|code-oss|VSCodium|codium|org.gnome.TextEditor|gedit|micro|nvim)$"
+    draw-border-with-background false
+    opacity 0.93
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: System utilities (also floating) ────────────────────────
+window-rule {
+    match app-id="^(org.gnome.Calculator|org.kde.kcalc|qalculate-gtk|speedcrunch|pavucontrol|org.pulseaudio.pavucontrol|blueman-manager|nm-connection-editor|nm-applet|com.github.wwmm.easyeffects|easyeffects|org.pulseaudio.pavucontrol|nwg-look|org.gnome.tweaks|gnome-tweaks)$"
+    open-floating true
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: Launchers & Game launchers (blur chrome, not games) ─────
+window-rule {
+    match app-id="^(org.vinegarhq.Sober|org.prismlauncher.PrismLauncher|net.lutris.Lutris|net.lutris.Lutris1|steam|steam_app_.*)$"
+    draw-border-with-background false
+    background-effect {
+        blur true
+    }
+}
+
+// ── Blur: All floating windows (popups, dialogs, etc.) ────────────
+window-rule {
+    match is-floating=true
     draw-border-with-background false
     background-effect {
         blur true
@@ -138,5 +234,3 @@ layer-rule {
     match namespace="^wallpaper-bg$"
     place-within-backdrop true
 }
-
-
