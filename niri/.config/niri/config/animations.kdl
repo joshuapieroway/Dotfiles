@@ -1,0 +1,107 @@
+// Material 3 Expressive motion profile for niri.
+//
+// M3 Expressive replaces most fixed-duration curves with "spatial springs":
+// physics-based motion that carries the velocity of your input and settles
+// with a small, controlled overshoot. Every value below maps to an official
+// M3 Expressive motion token.
+//
+// Spatial springs
+//   Spatial Fast     damping-ratio 0.9   stiffness 1400
+//   Spatial Default  damping-ratio 0.9   stiffness 700
+//   Spatial Slow     damping-ratio 0.9   stiffness 300
+//
+// Easing
+//   Emphasized decelerate  cubic-bezier(0.05, 0.7, 0.1, 1)
+//   Emphasized accelerate  cubic-bezier(0.3, 0, 0.8, 0.15)
+//
+// Durations
+//   short1-4    50 / 100 / 150 / 200 ms
+//   medium1-4  250 / 300 / 350 / 400 ms
+//
+// Three rules are applied deliberately:
+//
+//   1. Springs that chase your finger (workspace swipe, camera pan) stay at
+//      the token damping of 0.9, so a hard flick never wobbles.
+//   2. Discrete moments (dialogs, popups) drop the damping lower for a
+//      clearly visible springy pop. That contrast is the Expressive look.
+//   3. horizontal-view-movement, window-movement and window-resize are kept
+//      byte-identical on purpose. Niri drives them from a single config
+//      whenever they must stay in sync, e.g. a resize that pushes the view
+//      off-screen, and mismatched values would tear apart.
+
+animations {
+    // --- Navigation: long travel, gesture driven ---------------------------
+
+    // Spatial Default. A spring rather than a curve, so a touchpad flick
+    // carries its momentum into the new workspace.
+    workspace-switch {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+
+    // --- Window lifecycle ---------------------------------------------------
+
+    // Emphasized decelerate, medium1 (250 ms). Arrives quickly, then glides
+    // the rest of the way in and stops dead. This is the signature
+    // Expressive "settle".
+    window-open {
+        duration-ms 250
+        curve "cubic-bezier" 0.05 0.7 0.1 1
+    }
+
+    // Emphasized accelerate, short4 (200 ms). Leaves faster than it arrived,
+    // accelerating out of frame so it never gets in the way.
+    window-close {
+        duration-ms 200
+        curve "cubic-bezier" 0.3 0 0.8 0.15
+    }
+
+    // --- Layout: identical so niri can synchronize them --------------------
+
+    // Spatial Default. Camera pan to a window that is off-screen.
+    horizontal-view-movement {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+
+    // Spatial Default. Columns sliding over as windows open and close.
+    window-movement {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+
+    // Spatial Default. Preset widths and maximize/unmaximize.
+    window-resize {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+
+    // --- Compositor UI: loose enough to visibly bounce ----------------------
+
+    // Expressive pop. Spatial Fast stiffness, but deliberately underdamped so
+    // the notification overshoots once before settling.
+    config-notification-open-close {
+        spring damping-ratio=0.7 stiffness=1000 epsilon=0.001
+    }
+
+    // Slower and heavier than a notification, and a touch bouncier: a
+    // destructive dialog should feel like it has mass.
+    exit-confirmation-open-close {
+        spring damping-ratio=0.75 stiffness=600 epsilon=0.001
+    }
+
+    // Emphasized decelerate, short4 (200 ms). A quick flash that eases to
+    // full opacity and stops.
+    screenshot-ui-open {
+        duration-ms 200
+        curve "cubic-bezier" 0.05 0.7 0.1 1
+    }
+
+    // Spatial Default. Kept grounded rather than bouncy so the overview grid
+    // is readable the instant it lands.
+    overview-open-close {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.0001
+    }
+
+    // Spatial Default. Escape hatch if it all feels slow: uncomment
+    // `slowdown 0.85` above, or raise it to stretch every spring at once.
+    recent-windows-close {
+        spring damping-ratio=0.9 stiffness=700 epsilon=0.001
+    }
+}

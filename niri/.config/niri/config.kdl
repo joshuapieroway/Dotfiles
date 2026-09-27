@@ -1,13 +1,11 @@
-// Niri config — mostly stock; see comments for the few non-default bits.
 include "config/env.kdl"
 include "config/input.kdl"
 include "config/output.kdl"
 include "config/colors.kdl"
 include "config/autostart.kdl"
 include "config/keybinds.kdl"
-include "animations/glide.kdl"
+include "config/animations.kdl"
 
-// Let the wallpaper layer show through the gaps.
 layout {
     background-color "transparent"
     border {
@@ -18,13 +16,11 @@ layout {
     }
 }
 
-// Rounded window corners.
 window-rule {
     geometry-corner-radius 10
     clip-to-geometry true
 }
 
-// The wallpaper layer is created by Serpantinum; keep it in the gaps.
 layer-rule {
     match namespace="^wallpaper-bg$"
     place-within-backdrop true
