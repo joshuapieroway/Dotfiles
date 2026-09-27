@@ -40,6 +40,7 @@ binds {
     Mod+C { spawn "serpantinum" "msg" "toggle" "calendar"; }
     Mod+N { spawn "serpantinum" "msg" "toggle" "network"; }
     Mod+Shift+V { spawn "serpantinum" "msg" "toggle" "volume"; }
+    Mod+Shift+L { spawn-sh "$HOME/.local/bin/liked"; }
     Mod+H { spawn "serpantinum" "msg" "toggle" "guide"; }
     Mod+A { spawn "serpantinum" "msg" "toggle" "autohide"; }
 
