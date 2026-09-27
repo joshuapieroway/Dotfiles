@@ -6,6 +6,8 @@ include "config/autostart.kdl"
 include "config/keybinds.kdl"
 include "config/animations.kdl"
 
+prefer-no-csd
+
 layout {
     background-color "transparent"
     border {
