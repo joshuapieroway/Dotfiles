@@ -370,8 +370,218 @@ vim.lsp.config("clangd", {
 })
 vim.lsp.enable("clangd")
 
--- <leader>r — compile & run the current C++ file
-vim.keymap.set("n", "<leader>r", function()
+-- <leader>r — build & run.
+--
+-- Inside an Exercism C++ exercise this does exactly what
+-- https://exercism.org/docs/tracks/cpp/tests documents. Each exercise ships a
+-- CMakeLists.txt whose final line is
+--
+--   add_custom_target(test_<name> ALL DEPENDS <name> COMMAND <name>)
+--
+-- so the test binary is part of the *default* build target: `cmake --build
+-- build` compiles the solution, links it against the Catch2 runner in test/,
+-- and then runs it. The build's output is therefore already the test report
+-- and there is nothing left to execute afterwards.
+--
+-- Reconfiguring on every run is deliberate rather than wasteful. The exercise
+-- CMakeLists decides at *configure* time whether to compile the solution's
+-- .cpp:
+--
+--   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${file}.cpp)
+--     set(exercise_cpp ${file}.cpp)
+--   endif()
+--
+-- so an exercise whose solution is still header-only bakes a build system that
+-- never links that .cpp -- and it keeps doing so after the .cpp appears, with
+-- no error, because nothing re-reads the CMakeLists. Re-running `cmake -S . -B
+-- build` costs a few hundred milliseconds and picks the new file up.
+-- -Wno-author silences the "Compatibility with CMake < 3.10 will be removed"
+-- warning that the stock `cmake_minimum_required(VERSION 3.5.1)` emits on every
+-- configure, which would otherwise bury the test summary.
+local function exercism_root(start)
+  -- The vendored Catch2 checkout is what makes this an Exercism exercise rather
+  -- than any other CMake project that happens to be open. Globs rather than
+  -- stats test/catch.hpp exactly: complex-numbers ships the amalgamated build
+  -- as test/catch_amalgamated.{hpp,cpp} instead, so a hardcoded filename skips
+  -- one of the track's 86 exercises.
+  local function is_exercise(dir)
+    return vim.uv.fs_stat(dir .. "/CMakeLists.txt") ~= nil
+      and vim.fn.glob(dir .. "/test/catch*", true, true) ~= ""
+  end
+
+  -- `vim.fs.parents` yields ancestors only, so test `start` (the directory of
+  -- the current buffer, which is where the solution usually lives) by hand.
+  if is_exercise(start) then return start end
+  for dir in vim.fs.parents(start) do
+    if is_exercise(dir) then return dir end
+  end
+end
+
+-- The last exercise built, so a repeat press still works from inside the output
+-- split. That buffer is named `exercism://<exercise>`, so its `:p:h` is the
+-- *current* working directory and the walk above would resolve to nothing --
+-- and the press would silently fall through to the single-file compiler path.
+local last_exercise
+
+-- The window holding the solution file, i.e. the one to return to after a build.
+-- <leader>r is often pressed from the quickfix window (a compile error leaves
+-- the cursor there) or from the output split, and neither is a sensible place
+-- to land: the quickfix window is about to be closed by `cclose`, so it cannot
+-- be a valid target at all. Remember the last ordinary window instead.
+local last_focus
+local function focus_window()
+  local win = vim.api.nvim_get_current_win()
+  local buf = vim.api.nvim_win_get_buf(win)
+  if vim.b[buf].exercism_output or vim.bo[buf].buftype == "quickfix" then
+    if last_focus and vim.api.nvim_win_is_valid(last_focus) then return last_focus end
+  else
+    last_focus = win
+  end
+  return win
+end
+
+-- Show build output in a reusable bottom split. A terminal is the wrong tool
+-- here: its scrollback is awkward to read at a glance, and the Catch2 summary
+-- is only useful if it can be jumped back to, which a plain buffer can be.
+local function output_split(lines, name)
+  local win
+  for _, w in ipairs(vim.api.nvim_list_wins()) do
+    if vim.b[vim.api.nvim_win_get_buf(w)].exercism_output then
+      win = w
+      break
+    end
+  end
+
+  if win then
+    -- Reuse the split from the last run. Its buffer has bufhidden=wipe, so
+    -- replace it rather than writing over it -- the old report is stale and
+    -- the new one is shorter about as often as it is longer.
+    vim.api.nvim_win_set_buf(win, vim.api.nvim_create_buf(false, true))
+  else
+    vim.cmd("botright 16split")
+    win = vim.api.nvim_get_current_win()
+  end
+
+  -- A fresh split shows the *current* buffer, so it is still the solution
+  -- file. Swap in a scratch buffer before touching any buffer-local option --
+  -- setting buftype=nofile on the source buffer would quietly destroy it.
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_win_set_buf(win, buf)
+
+  local bo = vim.bo[buf]
+  bo.buftype = "nofile"
+  bo.swapfile = false
+  bo.bufhidden = "wipe"
+  vim.api.nvim_buf_set_name(buf, "exercism://" .. name)
+  -- Write the report *before* locking: `modifiable` has to be true for
+  -- nvim_buf_set_lines, and nothing runs between these two lines.
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  bo.modifiable = false
+  vim.b[buf].exercism_output = true
+end
+
+-- Drop the previous run's report, e.g. because this run failed to compile and
+-- leaving a stale green "All tests passed" on screen next to a red quickfix
+-- window is actively misleading.
+local function close_output_split()
+  for _, w in ipairs(vim.api.nvim_list_wins()) do
+    if vim.b[vim.api.nvim_win_get_buf(w)].exercism_output then
+      vim.api.nvim_win_close(w, true)
+      return
+    end
+  end
+end
+
+-- A g++/gcc diagnostic is the only thing in the output that should become a
+-- quickfix entry. Catch2 failures are not compiler errors and do not parse into
+-- locations, so they stay in the output split.
+--
+-- `%f[%a]` anchors on a letter boundary, so this matches the `error:` in
+-- `acronym.cpp:2:64: error: 'nope' was not declared` but not a substring of
+-- some longer identifier. Do not try to anchor the *end* of the match: gcc puts
+-- a UTF-8 quote there ("error: 'nope'"), and a `%f[%W]` frontier would never be
+-- satisfied, silently turning every real compile error into a test failure.
+-- make's "*** Error 1" is capitalised and correctly ignored.
+local function is_compile_error(line)
+  return line:match("%f[%a]error:") ~= nil
+end
+
+-- Run a command without blocking, invoking `on_exit` somewhere the API is
+-- actually usable. `vim.system`'s third argument is the async callback
+-- (`:wait()` takes only a timeout, and blocks the editor), but it is delivered
+-- from a libuv check handle -- a fast event context, where `setqflist` and
+-- `nvim_create_buf` raise E5560. `vim.schedule_wrap` defers it to the main loop.
+local function system(cmd, opts, on_exit)
+  vim.system(cmd, opts, on_exit and vim.schedule_wrap(on_exit) or nil)
+end
+
+local function build_exercise(root)
+  if vim.bo.modified then vim.cmd("write") end
+  local name = vim.fn.fnamemodify(root, ":t")
+  last_exercise = root
+
+  -- Opening the output split moves the cursor into it. Send the cursor back to
+  -- the solution, so the natural loop -- fix, `<leader>r`, read the notification
+  -- -- never needs a `Ctrl-w j` first, and so a second press resolves against
+  -- the solution file. The error paths deliberately do not refocus: there the
+  -- quickfix window *is* the answer, so leave the cursor in it to read it.
+  local focus = focus_window()
+  local function refocus()
+    if vim.api.nvim_win_is_valid(focus) then vim.api.nvim_set_current_win(focus) end
+  end
+
+  vim.notify("Building " .. name .. " ...", vim.log.levels.INFO)
+  system({ "cmake", "-S", ".", "-B", "build", "-Wno-author" }, { cwd = root, text = true }, function(cfg)
+    if cfg.code ~= 0 then
+      vim.fn.setqflist({}, "r", {
+        title = "CMake configure failed",
+        lines = vim.split((cfg.stdout or "") .. (cfg.stderr or ""), "\n"),
+      })
+      vim.cmd("copen")
+      vim.notify("CMake configure failed", vim.log.levels.ERROR)
+      return
+    end
+
+    system({ "cmake", "--build", "build", "--parallel" }, { cwd = root, text = true }, function(res)
+      local lines = vim.split((res.stdout or "") .. (res.stderr or ""), "\n", { trimempty = true })
+
+      for _, line in ipairs(lines) do
+        if is_compile_error(line) then
+          -- Push the whole log, not just the `error:` lines: the `note:` and
+          -- `  ~~~^` context that follows each one is in the same stream, and
+          -- quickfix only surfaces the entries it can parse into locations.
+          vim.fn.setqflist({}, "r", { title = "Compile errors", lines = lines })
+          close_output_split()
+          vim.cmd("copen")
+          vim.notify("Compilation failed", vim.log.levels.ERROR)
+          return
+        end
+      end
+
+      -- Reached only when it compiled, so the tail is the test report. No error
+      -- to look at any more, so retire the quickfix window from the last failed
+      -- run rather than leaving it to crowd the report. There is no
+      -- `getqflistwin()`; `getqflist()` reports the window as `winid`, and 0
+      -- when none is open.
+      if vim.fn.getqflist({ winid = 1 }).winid ~= 0 then vim.cmd("cclose") end
+      output_split(lines, name)
+      refocus()
+      local joined = table.concat(lines, "\n")
+      if res.code == 0 and joined:match("All tests passed") then
+        local count = joined:match("(assertions:%s*%d+)")
+        vim.notify(("All tests passed%s"):format(count and (" (" .. count .. ")") or ""), vim.log.levels.INFO)
+      else
+        local summary = joined:match("assertions:%s*%d+ %|[^\n]*")
+          or joined:match("test cases:%s*%d+ %|[^\n]*")
+        vim.notify("Tests failed" .. (summary and (": " .. summary) or ""), vim.log.levels.ERROR)
+      end
+    end)
+  end)
+end
+
+-- Fallback for a plain C/C++ file that is not an Exercism exercise: compile the
+-- single translation unit and run the result in a terminal.
+local function compile_and_run()
   local file = vim.fn.expand("%:p")
   local ft = vim.bo.filetype
   if ft ~= "cpp" and ft ~= "c" then
@@ -400,7 +610,24 @@ vim.keymap.set("n", "<leader>r", function()
 
   vim.notify("Running " .. vim.fn.fnamemodify(out, ":t") .. " ...", vim.log.levels.INFO)
   vim.cmd("botright split | resize 12 | terminal " .. vim.fn.shellescape(out))
-end, { desc = "Compile & run C++ file" })
+end
+
+vim.keymap.set("n", "<leader>r", function()
+  -- For an unnamed buffer `%:p` expands to the cwd itself, so `:h` would strip
+  -- a real directory off the end of it. Use the cwd verbatim in that case.
+  local unnamed = vim.api.nvim_buf_get_name(0) == ""
+  local dir = unnamed and vim.fn.getcwd() or vim.fn.expand("%:p:h")
+
+  -- Prefer the exercise the current buffer lives in; fall back to the last one
+  -- built, so pressing again from the output split (or the quickfix window)
+  -- re-runs the same exercise instead of dropping into the single-file path.
+  local root = exercism_root(dir) or (last_exercise and vim.uv.fs_stat(last_exercise) and last_exercise)
+  if root then
+    build_exercise(root)
+  else
+    compile_and_run()
+  end
+end, { desc = "Build & run (Exercism exercise, else single C/C++ file)" })
 
 -- :Cd [directory] changes Neovim's working directory and opens that folder.
 vim.api.nvim_create_user_command("Cd", function(opts)
