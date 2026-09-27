@@ -1,4 +1,4 @@
-# 🚀 installation instruchtions
+# 🚀 installation instructions
 
 ```bash
 git clone https://github.com/joshuapieroway/Dotfiles
