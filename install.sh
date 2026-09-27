@@ -242,7 +242,7 @@ install_packages() {
 
   install_group "Desktop apps" \
     firefox obsidian opencode \
-    keepassxc cava fastfetch btop duf
+    cava fastfetch btop duf
 
   install_group "Gaming" \
     steam lutris prismlauncher mangohud gamescope
