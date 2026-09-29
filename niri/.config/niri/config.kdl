@@ -5,10 +5,12 @@ include "config/colors.kdl"
 include "config/autostart.kdl"
 include "config/keybinds.kdl"
 include "config/animations.kdl"
+include "config/window-rules.kdl"
 
 prefer-no-csd
 
 layout {
+    gaps 10
     background-color "transparent"
     border {
         off

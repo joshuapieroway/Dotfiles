@@ -1,6 +1,6 @@
 binds {
     Mod+Return { spawn "kitty"; }
-    Mod+B { spawn "firefox"; }
+    Mod+B { spawn "brave-origin"; }
     Mod+F { spawn-sh "kitty -e yazi"; }
     Mod+Backspace { toggle-overview; }
     Mod+Space { spawn "serpantinum" "msg" "toggle" "launcher"; }
