@@ -1,11 +1,3 @@
-// These apps open maximized (100% of the tiling area).
-// Verified app-ids against the compositor:
-//   Twintail → "Twintaillauncher" (Flatpak id "app.twintaillauncher.ttl")
-//   Lutris   → "net.lutris.Lutris"
-//   Steam    → "steam"
-//   Discord  → "discord"
-//   PrismLauncher → "org.prismlauncher.PrismLauncher"
-
 window-rule {
     match app-id=r#"^(Twintaillauncher|app\.twintaillauncher\.ttl)$"#
     open-maximized true
@@ -22,11 +14,12 @@ window-rule {
 }
 
 window-rule {
-    match app-id=r#"^(discord|com\.discordapp\.Discord)$"#
+    match app-id=r#"^(org\.prismlauncher\.PrismLauncher|PrismLauncher)$"#
     open-maximized true
 }
 
 window-rule {
-    match app-id=r#"^(org\.prismlauncher\.PrismLauncher|PrismLauncher)$"#
-    open-maximized true
+    match app-id="^(com.shellyorg.shelly)"
+    open-floating true
 }
+
