@@ -118,7 +118,9 @@ ok "${PRETTY_NAME:-${NAME:-${ID:-Arch}}}"
 command -v pacman >/dev/null || die "pacman not found"
 ok "pacman $(pacman --version | sed -n 's/.*Pacman v\([^ ]*\).*/\1/p' | head -1)"
 
-# AUR helper — optional, only needed for the AUR group.
+# AUR helper — optional. Every package install_packages() asks for lives in an
+# official repo, so a missing helper is only worth a quiet note, not a warning.
+# It still gets used the moment an AUR-only package shows up in a group.
 AUR_HELPER=""
 if [[ $NO_AUR -eq 0 ]]; then
   for helper in paru yay paku trizen; do
@@ -127,7 +129,7 @@ if [[ $NO_AUR -eq 0 ]]; then
   if [[ -n "$AUR_HELPER" ]]; then
     ok "AUR helper: $AUR_HELPER"
   else
-    warn "no AUR helper found (paru/yay/paku) — AUR packages will be skipped"
+    skip "no AUR helper (paru/yay/paku) — only matters for AUR-only packages"
   fi
 fi
 
@@ -150,6 +152,27 @@ have()      { [[ -n "${HAVE[$1]:-}" ]]; }
 mark_have() { HAVE["$1"]=1; }
 in_repo()   { pacman -Si "$1" >/dev/null 2>&1; }
 in_aur()    { [[ -n "$AUR_HELPER" ]] && "$AUR_HELPER" -Si "$1" >/dev/null 2>&1; }
+
+# Installed packages that block <pkg>, one per line. Asks pacman rather than
+# hardcoding names, so providers (not just exact names) are caught: pipewire-jack
+# and jack2 never name each other, they just conflict on the virtual "jack".
+installed_conflicts() {
+  local pkg="$1" name
+  pacman -Qi "$pkg" 2>/dev/null | awk '
+    /^[^[:space:]]/ {                      # a new "Key      : value" field
+      key = $1
+      val = $0
+      sub(/^[^:]*:[[:space:]]*/, "", val)   # drop the "Conflicts With :" prefix
+      active = (key ~ /^Conflicts/ || key ~ /^Replaces/)
+      if (active) { n = split(val, a); for (i = 1; i <= n; i++) print a[i] }
+      next
+    }
+    active { for (i = 1; i <= NF; i++) print $i }   # wrapped value lines
+  ' | while read -r name; do
+    have "$name" && printf '%s\n' "$name"
+  done
+  return 0   # "no conflicts" is a normal result, not a failure
+}
 
 # install_group <label> <pkg>...
 # Splits into already-have / repo / AUR / unknown and installs the rest.
@@ -184,10 +207,22 @@ install_group() {
     info "installing: ${repo_pkgs[*]}"
     if [[ $DRY_RUN -eq 1 ]]; then
       info "${C_DIM}dry-run: pacman -S --needed --noconfirm${C_RESET} ${repo_pkgs[*]}"
-    else
-      run_privileged pacman -S --needed --noconfirm "${repo_pkgs[@]}" \
-        || warn "pacman reported errors for: ${repo_pkgs[*]}"
+    elif run_privileged pacman -S --needed --noconfirm "${repo_pkgs[@]}"; then
       for p in "${repo_pkgs[@]}"; do mark_have "$p"; done
+    else
+      # One unresolvable conflict (jack2 vs pipewire-jack, say) aborts the whole
+      # transaction and leaves nothing installed, so retry one at a time to
+      # salvage everything that does resolve.
+      warn "batch install failed — retrying individually"
+      local -a failed=()
+      for p in "${repo_pkgs[@]}"; do
+        if run_privileged pacman -S --needed --noconfirm "$p"; then
+          mark_have "$p"
+        else
+          failed+=("$p")
+        fi
+      done
+      ((${#failed[@]})) && warn "could not install: ${failed[*]}"
     fi
   fi
 
@@ -213,69 +248,98 @@ install_group() {
 }
 
 # ── packages ──────────────────────────────────────────────────────────────
-# Every entry below is referenced somewhere in the repo: a keybind, an
-# autostart line, a yazi opener, a shell alias, or a window rule.
+# The rule: install what a config in this repo actually *invokes*, plus what
+# this script needs to run. Nothing else. A package earns its place only if
+# grep finds it in a keybind, an autostart line, a yazi opener, a shell alias,
+# or an env var the compositor reads.
+#
+# Deliberately NOT installed, because no config references them — add them by
+# hand if you want them:
+#   browsers      brave / firefox        (keybinds.kdl:3 spawns "brave-origin",
+#                                        which no Arch package ships anyway)
+#   gaming        steam lutris prismlauncher mangohud gamescope, and the
+#                 32-bit lib32-* Vulkan/Mesa drivers that only exist for
+#                 Proton. The niri window rules for these are inert matchers;
+#                 they cost nothing if you install the apps later.
+#   media/music   cava                   (audio visualiser)
+#   sysinfo       fastfetch btop htop duf
+#   misc          ripgrep jq github-cli qt5ct grim slurp wlr-randr
+#
+# Anything the configs need that is NOT a pacman package (serpantinum,
+# brave-origin, flatpak, ~/.local/bin/liked) is reported by verify() instead.
 
 install_packages() {
   step "Installing packages"
 
+  # bash is not implicit here: autostart.kdl spawns it as argv[0] on two lines.
+  # curl is what install_font uses to fetch Maple Mono NF.
   install_group "Base toolchain" \
-    base-devel git curl wget
+    bash base-devel git curl
 
+  # niri execs xwayland-satellite itself (config/env.kdl), and env.kdl points
+  # Qt and GTK at qt6ct and Papirus, so both themes are load-bearing.
   install_group "Compositor and session" \
     niri xwayland-satellite \
-    qt6ct qt5ct papirus-icon-theme
+    qt6ct papirus-icon-theme
 
+  # kitty/neovim/yazi are spawned by keybinds.kdl and yazi.toml; the zsh trio
+  # is sourced unconditionally by .zshrc, so it is mandatory, not cosmetic.
+  #
   # NB: nvim's init.lua gates its 22-parser install on `executable("tree-sitter")`,
   # so the *CLI* is what matters. Arch's `tree-sitter` package ships only
-  # libtree-sitter.so + headers; the binary lives in `tree-sitter-cli`.
+  # libtree-sitter.so + headers; the binary lives in `tree-sitter-cli`, and
+  # nvim-treesitter uses nvim's own bundled parser runtime, not the system lib.
   install_group "Terminal, shell, editor, files" \
     kitty neovim yazi \
     zsh cachyos-zsh-config zsh-theme-powerlevel10k \
-    fzf eza bat zoxide ripgrep jq github-cli \
-    tree-sitter tree-sitter-cli
+    fzf eza bat zoxide \
+    tree-sitter-cli
 
-  # Referenced by autostart.kdl, .zshrc, yazi.toml and the niri keybinds.
-  install_group "Wayland runtime helpers" \
-    imv mpv grim slurp wlr-randr
+  # autostart.kdl starts a cliphist daemon behind wl-paste and enables the
+  # easyeffects unit on every login; .zshrc pipes fzf output into wl-copy;
+  # kitty.conf uses xdg-open for URL hints. All four were referenced but never
+  # installed before, so the clipboard and audio FX silently did nothing.
+  install_group "Session runtime" \
+    wl-clipboard cliphist easyeffects xdg-utils
 
-  install_group "Desktop apps" \
-    cava fastfetch btop htop duf
+  # yazi.toml opens images with imv and video/audio with mpv; keybinds.kdl
+  # drives the four media keys with playerctl.
+  install_group "Media openers" \
+    imv mpv playerctl
 
-  install_group "Gaming" \
-    steam lutris prismlauncher mangohud gamescope
+  # init.lua enables the clangd LSP directly (mason will not manage it), so
+  # the compiler toolchain has to be here for C/C++ to get diagnostics.
+  install_group "Editor language support" \
+    clang
 
-  # 32-bit Vulkan/Mesa for Steam + Proton. The DRM vendor ID is authoritative;
-  # lspci free-text is only a fallback, and it reports "ATI" as well as "AMD".
-  local vendor=""
-  local v
-  for v in /sys/class/drm/card[0-9]*/device/vendor; do
-    [[ -r "$v" ]] || continue
-    case "$(<"$v")" in
-      0x10de) vendor="nvidia" ;;
-      0x1002) vendor="amd" ;;
-      0x8086) vendor="intel" ;;
-    esac
-    break
-  done
-  if [[ -z "$vendor" ]] && command -v lspci >/dev/null; then
-    case "$(lspci 2>/dev/null | grep -iE 'vga compatible|3d controller|display controller' \
-             | grep -oiE 'nvidia|amd|ati|intel' | head -1 || true)" in
-      nvidia) vendor="nvidia" ;;
-      amd|ati) vendor="amd" ;;
-      intel)   vendor="intel" ;;
-    esac
+  # pipewire-jack and the standalone JACK daemons both provide the JACK API and
+  # are mutually exclusive. Note the asymmetry that makes this easy to miss:
+  # pipewire-jack names "jack2" in its Conflicts With, but jack2 declares its
+  # conflict on the virtual "jack" instead, so neither names the other. This
+  # script never removes an installed package, so when a competitor is present
+  # we leave it alone and drop pipewire-jack from this run.
+  local -a audio=(
+    pipewire pipewire-pulse wireplumber pipewire-alsa pipewire-jack
+    pavucontrol
+  )
+  if ! have pipewire-jack; then
+    local -a competing=()
+    local c
+    while read -r c; do competing+=("$c"); done < <(installed_conflicts pipewire-jack)
+    # Named fallbacks, in case installed_conflicts came back empty because the
+    # sync DB is stale or the metadata is unreadable.
+    for c in jack jack2 jack2-full jack2-dbus; do
+      if have "$c" && [[ " ${competing[*]:-} " != *" $c "* ]]; then
+        competing+=("$c")
+      fi
+    done
+    if ((${#competing[@]})); then
+      warn "${competing[*]} conflicts with pipewire-jack — leaving it installed, skipping pipewire-jack"
+      info "for PipeWire's JACK instead: sudo pacman -R ${competing[*]} && re-run this script"
+      audio=("${audio[@]/pipewire-jack/}")
+    fi
   fi
-  case "$vendor" in
-    nvidia) install_group "Gaming drivers (NVIDIA, 32-bit)" lib32-mesa lib32-vulkan-nvidia lib32-nvidia-utils lib32-libglvnd ;;
-    amd)    install_group "Gaming drivers (AMD, 32-bit)"    lib32-mesa lib32-vulkan-radeon ;;
-    intel)  install_group "Gaming drivers (Intel, 32-bit)"  lib32-mesa lib32-vulkan-intel ;;
-    *)      warn "could not detect GPU vendor — install 32-bit drivers yourself if Steam fails" ;;
-  esac
-
-  install_group "Audio and power" \
-    pipewire pipewire-pulse wireplumber pipewire-alsa pipewire-jack \
-    pavucontrol playerctl
+  install_group "Audio and power" "${audio[@]}"
 }
 
 # ── fonts ─────────────────────────────────────────────────────────────────
@@ -378,8 +442,8 @@ check_repo_layout() {
 
 # ── symlink wiring ────────────────────────────────────────────────────────
 # The live layout: ~/.config/<app>/ is a real directory whose *entries* are
-# symlinks into the repo. That keeps matugen-generated files (niri colors.kdl,
-# kitty colors.conf) writing straight through to the working tree.
+# symlinks into the repo, so edits in the working tree take effect immediately
+# with no copy or rsync step.
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 
 link_app() {
@@ -404,7 +468,7 @@ link_app() {
     target="$dst/$name"
     local want="$src/$name"
 
-    # Already pointing at the repo — nothing to do.
+    # if already pointing at the repo
     if [[ -L "$target" && "$(readlink -f "$target" 2>/dev/null)" == "$(readlink -f "$want")" ]]; then
       kept=$((kept + 1))
       continue
@@ -416,7 +480,7 @@ link_app() {
       continue
     fi
 
-    # Something real is in the way. Back it up rather than clobbering it.
+    # backups
     if [[ -e "$target" || -L "$target" ]]; then
       mv "$target" "${target}${BACKUP_SUFFIX}" 2>/dev/null \
         && backed=$((backed + 1)) \
@@ -495,12 +559,15 @@ verify() {
   step "Verification"
 
   # Note: check the *binary* names, which differ from some package names
-  # (neovim -> nvim, ripgrep -> rg, github-cli -> gh).
+  # (neovim -> nvim, wl-clipboard -> wl-copy/wl-paste, xdg-utils -> xdg-open).
+  # Every entry here is something a config in the repo actually invokes.
   local -a wanted=(
-    niri kitty nvim yazi zsh fzf eza bat zoxide
-    wl-copy wl-paste cliphist matugen easyeffects keepassxc playerctl
-    imv mpv firefox opencode obsidian tree-sitter steam lutris prismlauncher
-    btop duf cava fastfetch jq rg git wlr-randr
+    niri xwayland-satellite
+    kitty nvim yazi zsh fzf eza bat zoxide
+    bash git
+    wl-copy wl-paste cliphist easyeffects xdg-open
+    imv mpv playerctl
+    pavucontrol wpctl clangd tree-sitter
   )
   local -a missing=()
   local b
@@ -512,6 +579,27 @@ verify() {
     ok "all referenced binaries are on PATH"
   else
     warn "still missing: ${missing[*]}"
+  fi
+
+  # These are invoked by the configs but are not pacman packages, so this script
+  # cannot install them and will not pretend to. Report them separately: a
+  # missing one means keybinds silently do nothing at login.
+  #   serpantinum  bar/launcher/screenshots/volume + 20 workspace routes
+  #                (keybinds.kdl, ~40 spawns) and serpantinumd (autostart.kdl)
+  #   brave-origin Mod+B (keybinds.kdl:3) — Arch's brave package ships
+  #                "brave", not "brave-origin", so this key is unbacked
+  #   flatpak      Mod+O runs `flatpak run ai.opencode.opencode`
+  #   liked        Mod+Shift+L runs $HOME/.local/bin/liked
+  local -a external=(serpantinum serpantinumd brave-origin liked)
+  local -a absent=()
+  for b in "${external[@]}"; do
+    command -v "$b" >/dev/null 2>&1 || absent+=("$b")
+  done
+  if ((${#absent[@]})); then
+    warn "not on PATH, so those keybinds will do nothing: ${absent[*]}"
+    info "see SYSTEM-GUIDE.md for how these are installed"
+  else
+    ok "external keybind helpers are on PATH"
   fi
 
   # Symlink health.
@@ -544,10 +632,41 @@ $(printf '%s' "$C_BOLD")Next steps$(printf '%s' "$C_RESET")
        - 'xkb' lists only "us", so Alt+Shift toggles to nothing.
          Add a second layout:  layout "us,ca"  in config/input.kdl
        - You have no quit binding. Log out with:  niri msg action quit
-  4. matugen writes kitty/colors.conf and niri/config/colors.kdl through the
-     symlinks, so theme switches will show up as diffs in this repo. That is
-     expected — do not replace the symlinks with copies.
-  5. Full reference: SYSTEM-GUIDE.md
+
+  $(printf '%s' "$C_DIM")-----------------------------------------------------------------------$(printf '%s' "$C_RESET")
+  $(printf '%s' "$C_BOLD")These dotfiles are intended for use with the Serpantinum$(printf '%s' "$C_RESET")
+  $(printf '%s' "$C_BOLD")desktop shell — install it or most keybinds do nothing.$(printf '%s' "$C_RESET")
+  $(printf '%s' "$C_DIM")-----------------------------------------------------------------------$(printf '%s' "$C_RESET")
+
+  Serpantinum is a Quickshell/QML shell that owns the bar, the app launcher and
+  every popout. It is not optional decoration here: almost every binding in
+  config/keybinds.kdl is a serpantinum command, not a niri action — the bar,
+  Mod+Space, screenshots, volume, lock, and all twenty workspace routes. Skip
+  it and you get a bare compositor with keys wired to nothing.
+
+  Install (Arch/CachyOS), from a normal user shell — do NOT run this as root:
+
+      bash -c "\$(curl -fsSL https://raw.githubusercontent.com/ilyamiro/serpantinum/master/install/install.sh)"
+
+  It clones itself to ~/.local/share/serpantinum/src/ and installs serpantinum
+  and serpantinumd into ~/.local/bin, which .zshrc already puts on your PATH.
+  autostart.kdl starts the daemon for you via "serpantinumd start".
+  It clones an AUR helper (paru or yay) if you have none, pulls quickshell,
+  and asks before enabling telemetry. Re-run it and choose "update" to upgrade.
+
+  Worth knowing before you run it:
+    - Choose niri when it asks which compositor to wire up. Since v2 it leaves
+      monitors, keybinds and autostart to you, so it will not fight this repo.
+    - An update overwrites the local Bluetooth bar patch — see SYSTEM-GUIDE.md
+      §10 and re-apply it, or drop a pristine BtWidget.qml.orig alongside it.
+    - It installs its own dependency set, which is a lot larger than the
+      trimmed list this script uses, and includes matugen, fastfetch, ripgrep,
+      grim, slurp, ffmpeg and nautilus. Those are its requirements, not
+      anything the configs here reference.
+
+  Confirm it landed with:  serpantinum -V   and   serpantinumd status
+
+  4. Full reference: SYSTEM-GUIDE.md §4 (Serpantinum) and §10 (gotchas)
 EOF
 }
 
