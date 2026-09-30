@@ -35,7 +35,6 @@ binds {
     Mod+P { spawn "serpantinum" "msg" "toggle" "clipboard"; }
     Mod+M { spawn "serpantinum" "msg" "toggle" "music"; }
     Mod+S { spawn "serpantinum" "msg" "toggle" "system"; }
-    
     Mod+Shift+B { spawn "serpantinum" "msg" "toggle" "wallpaper"; }
     Mod+C { spawn "serpantinum" "msg" "toggle" "calendar"; }
     Mod+N { spawn "serpantinum" "msg" "toggle" "network"; }

@@ -40,7 +40,7 @@ drive it. Written against the live system, not from memory.
 | Zsh | 5.9.2 | oh-my-zsh (CachyOS config) + Powerlevel10k |
 | Yazi | 26.9.1 | File manager, `Mod+F` |
 | zoxide | 0.10.0 | Directory jumper |
-| fzf | 0.74.4 | Fuzzy finder (shell + `emoji` picker) |
+| fzf | 0.74.4 | Fuzzy finder (shell `emoji` picker) |
 | eza | — | `ls` replacement |
 | bat | 0.26.1 | `cat` replacement |
 | matugen | 4.2.0 | Generates theme colors for niri/kitty/cava/fastfetch |
@@ -102,7 +102,6 @@ source ~/.zshrc       # the only thing that needs an explicit action
 
 ```bash
 niri validate                    # niri config  -> "config is valid"
-qmllint -I ~/.local/share/serpantinum/src/quickshell EmojiPicker.qml   # QML
 nvim --headless -c 'qa'          # nvim config (will surface Lua errors)
 ```
 
@@ -222,7 +221,6 @@ the Windows/Super key.
 | `Mod+P` | Clipboard history |
 | `Mod+M` | Music |
 | `Mod+S` | System monitor |
-| `Mod+E` | Emoji picker |
 | `Mod+Shift+B` | Wallpaper |
 | `Mod+C` | Calendar |
 | `Mod+N` | Network |
@@ -359,7 +357,6 @@ once** and they are always mutually consistent.
 | Bar | Left-positioned, 100px, `fill` style, 8 workspaces, material clock |
 | App launcher | `Mod+Space` — 600px wide, top position, 6 items, terminal `kitty -e`, smart ranking |
 | Clipboard | `Mod+P` — backed by cliphist |
-| Emoji picker | `Mod+E` — a **local custom component**, see below |
 | Music / Volume / Network / System / Calendar / Wallpaper / Guide | the remaining popouts |
 | Screenshots | `Print` and friends |
 | Lock, brightness, blue-light filter, weather, location | via the CLI |
@@ -373,7 +370,7 @@ serpantinum -V                        # version
 serpantinum launch <target> [args]    # targets: start, widgetredactor
 serpantinum msg workspace <n> [move]
 serpantinum msg open <target> [sub]   # e.g. open network wifi
-serpantinum msg toggle <target>       # launcher, clipboard, emoji, music, ...
+serpantinum msg toggle <target>       # launcher, clipboard, music, ...
 serpantinum msg close
 serpantinum ipc ...                   # raw IPC to Shell.qml
 serpantinum kill                      # stop the whole shell
@@ -390,30 +387,6 @@ serpantinumd start | stop | status
 `serpantinum msg toggle <target>` is the general escape hatch — anything with a keybind can
 be triggered from a script or a custom binding. Run `serpantinum msg toggle` with no
 argument to see valid targets.
-
-### 4.3 Emoji picker — a local component
-
-Worth calling out because it is **not** part of upstream Serpantinum. It lives at:
-
-```
-~/.local/share/serpantinum/src/quickshell/emoji/EmojiPicker.qml
-~/.local/share/serpantinum/src/quickshell/emoji/emoji_fetcher.py
-```
-
-It is a from-scratch imitation of `launcher/Launcher.qml`, with its own
-`EmojiPickerController` singleton. `emoji_fetcher.py` fetches the emoji dataset and keeps a
-usage-ranking file at `~/.local/state/serpantinum/emoji_usage.json`, so frequently used
-emoji rank higher when the query is empty.
-
-Settings under `settings.json` → `emojiPicker`: `position` (top/bottom/left/right),
-`width` (500), `itemCount` (8). The picker is also anchored to the bar and can be centred.
-
-Because this file is not in the Serpantinum git tree, **a Serpantinum reinstall or update
-can delete it.** Back it up:
-
-```bash
-cp -r ~/.local/share/serpantinum/src/quickshell/emoji ~/emoji-picker-backup
-```
 
 ---
 
@@ -479,9 +452,6 @@ emoji
 
 Opens an fzf picker of ~200 emoji, filtered as you type, and copies the selection to the
 clipboard with `wl-copy`. Handy for commit messages and chat.
-
-This is the **shell** picker. It is separate from the Serpantinum GUI emoji picker
-(`Mod+E`); they do not share a history or ranking.
 
 ### 5.5 Prompt
 
