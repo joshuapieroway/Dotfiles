@@ -6,7 +6,7 @@ binds {
     Mod+Space { spawn "serpantinum" "msg" "toggle" "launcher"; }
     Mod+W { close-window; }
     Mod+V { toggle-window-floating; }
-    Mod+O { spawn-sh "kitty -e opencode"; }
+    Mod+O { spawn "flatpak" "run" "ai.opencode.opencode"; }
     Mod+Shift+F { fullscreen-window; }
     Mod+T { maximize-column; }
     Mod+X { switch-preset-column-width; }
@@ -35,7 +35,7 @@ binds {
     Mod+P { spawn "serpantinum" "msg" "toggle" "clipboard"; }
     Mod+M { spawn "serpantinum" "msg" "toggle" "music"; }
     Mod+S { spawn "serpantinum" "msg" "toggle" "system"; }
-    Mod+E { spawn "serpantinum" "msg" "toggle" "emoji"; }
+    
     Mod+Shift+B { spawn "serpantinum" "msg" "toggle" "wallpaper"; }
     Mod+C { spawn "serpantinum" "msg" "toggle" "calendar"; }
     Mod+N { spawn "serpantinum" "msg" "toggle" "network"; }
