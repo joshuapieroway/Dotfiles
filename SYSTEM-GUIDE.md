@@ -893,9 +893,12 @@ Things that have already cost time, or will.
    never runs. Install it (`sudo pacman -S tree-sitter`) or the intended 22-parser list is
    never applied.
 
-4. **The emoji picker is not upstream Serpantinum.** It lives only in
-   `~/.local/share/serpantinum/src/quickshell/emoji/`. A Serpantinum reinstall/update can
-   delete it without warning. Back it up.
+4. **The bar's Bluetooth module is patched locally.** Upstream `BtWidget.qml` hides itself on
+   any machine with no battery (`isDesktop`, gated via `ls /sys/class/power_supply/BAT*`), so
+   `bt` never renders on a desktop. A `showOnDesktop` property was added to force it visible.
+   A Serpantinum reinstall/update **overwrites this file** and silently reverts the fix —
+   re-apply it, or drop a pristine copy at `BtWidget.qml.orig` (check it is byte-identical to
+   upstream before trusting it).
 
 5. **Niri's default keybindings do not exist on this system.** Only what is in
    `config/keybinds.kdl` is bound — niri does not merge a default `binds` layer. Most
@@ -936,7 +939,7 @@ Things that have already cost time, or will.
 
 ```
 LAUNCH      Mod+Return kitty      Mod+Space launcher   Mod+F yazi
-            Mod+B firefox         Mod+O opencode       Mod+E emoji
+            Mod+B firefox         Mod+O opencode
 
 WINDOW      Mod+W close           Mod+V float          Mod+Shift+F fullscreen
             Mod+T max column      Mod+X preset width   Mod+Backspace overview
@@ -949,7 +952,7 @@ RESIZE      Mod+Ctrl+←/→ width     Mod+Ctrl+↑/↓ height
 WORKSPACE   Mod+1..0 go           Mod+Shift+1..0 move
             Mod+Page+Up/Dn        Mod+Ctrl+1..9 move column
 
-POPOUTS     Mod+P clip   Mod+M music   Mod+S system   Mod+E emoji
+POPOUTS     Mod+P clip   Mod+M music   Mod+S system
             Mod+C cal    Mod+N net     Mod+Shift+V vol
             Mod+H guide  Mod+A autohide Mod+Shift+B wallpaper
 
@@ -988,9 +991,9 @@ cd ~/Dotfiles && git pull
 nvim -c 'Lazy update' -c 'qa'
 # or :Lazy -> Update All
 
-# Update Serpantinum's own emoji picker backup
-diff -r ~/emoji-picker-backup \
-        ~/.local/share/serpantinum/src/quickshell/emoji
+# After a Serpantinum update, check the bar Bluetooth patch survived (gotcha 4)
+diff -u ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qml.orig \
+        ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qml
 ```
 
 ### Log locations
@@ -999,7 +1002,7 @@ diff -r ~/emoji-picker-backup \
 |---|---|
 | Serpantinum daemon status | `serpantinumd status` |
 | Serpantinum caches | `~/.cache/serpantinum/` |
-| Serpantinum state (emoji ranks, colors) | `~/.local/state/serpantinum/` |
+| Serpantinum state (colors) | `~/.local/state/serpantinum/` |
 | Serpantinum config | `~/.config/serpantinum/settings.json` |
 | cliphist | `cliphist list` |
 | zoxide database | `z foo --list` |
