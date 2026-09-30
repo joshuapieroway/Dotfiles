@@ -799,76 +799,7 @@ any URL. This gives file-status indicators in the listing for git repositories.
 `/` filter · `?` help · `q` quit · `<Space>` toggle selection
 
 ---
-
-## 9. Other notable software
-
-### cliphist
-
-Runs at niri autostart, watching both text and image clipboard via `wl-paste`. Backs the
-`Mod+P` clipboard popout, which is why clipboard history survives a restart.
-
-```bash
-cliphist list | fzf -w | cliphist decode | wl-copy     # pick and copy
-wl-paste -t text -n                                     # primary selection
-wl-paste -t text -p                                     # primary (trailing newline)
-```
-
-### matugen
-
-Generates a colour scheme from your wallpaper and writes it to several places at once:
-
-| Target | File |
-|---|---|
-| niri | `~/.config/niri/config/colors.kdl` |
-| kitty | `~/.config/kitty/colors.conf` |
-| Serpantinum | `~/.local/state/serpantinum/qs_colors.json` |
-| fastfetch | `~/.config/fastfetch/config.jsonc` |
-| cava | `~/.config/cava/config` |
-
-This is why your niri border colour, your kitty palette and your shell theme are all the
-same blue (`#8dcff1`). Templates live in
-`~/.local/share/serpantinum/src/assets/matugen/templates/`.
-
-### easyeffects
-
-Enabled at startup via `systemctl --user enable --now easyeffects`. Provides the blur and
-brightness/vignette effects that complement niri's own blur.
-
-### KeePassXC
-
-Started minimised at login so the tray icon is available without prompting. It is also
-forced to float by a niri window rule.
-
-### playerctl
-
-Drives the media keys (`XF86Audio*`) for MPRIS-aware players — Spotify (via Spicetify),
-mpv, and browsers.
-
-### Spicetify
-
-`~/.spicetify` is on your `PATH` from `.zshrc`, so the `spicetify` CLI is available
-directly for theming Spotify.
-
-### btop / duf
-
-```bash
-btop    # system monitor (floats via niri window rule)
-duf     # disk usage, nicer than df/du
-```
-
-### Steam, Lutris, Prism Launcher
-
-All present. niri window rules give Steam, Proton windows, Lutris and Prism Launcher
-full-width columns, and float Steam's toast notifications (top-right), the Friends window,
-and the Proton/Endfield in-game overlays. Games themselves are **not** blurred.
-
-### Screenshot workflow
-
-`Print` saves, `Shift+Print` saves and opens an editor. Files land under
-`~/Pictures/Screenshots/`. Serpantinum also supports a region capture and an on-screen
-keyboard/annotation flow.
-
----
+`
 
 ## 10. Gotchas and traps
 
@@ -989,13 +920,3 @@ diff -u ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qm
         ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qml
 ```
 
-### Log locations
-
-| What | Where |
-|---|---|
-| Serpantinum daemon status | `serpantinumd status` |
-| Serpantinum caches | `~/.cache/serpantinum/` |
-| Serpantinum state (colors) | `~/.local/state/serpantinum/` |
-| Serpantinum config | `~/.config/serpantinum/settings.json` |
-| cliphist | `cliphist list` |
-| zoxide database | `z foo --list` |
