@@ -1,31 +1,8 @@
 include "config/env.kdl"
 include "config/input.kdl"
 include "config/output.kdl"
-include "config/colors.kdl"
 include "config/autostart.kdl"
 include "config/keybinds.kdl"
 include "config/animations.kdl"
 include "config/window-rules.kdl"
-
-prefer-no-csd
-
-layout {
-    gaps 10
-    background-color "transparent"
-    border {
-        off
-    }
-    focus-ring {
-        off
-    }
-}
-
-window-rule {
-    geometry-corner-radius 10
-    clip-to-geometry true
-}
-
-layer-rule {
-    match namespace="^wallpaper-bg$"
-    place-within-backdrop true
-}
+include "config/layout.kdl"

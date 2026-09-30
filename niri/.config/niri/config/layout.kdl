@@ -1,0 +1,22 @@
+prefer-no-csd
+
+layout {
+    gaps 10
+    background-color "transparent"
+    border {
+        off
+    }
+    focus-ring {
+        off
+    }
+}
+
+window-rule {
+    geometry-corner-radius 10
+    clip-to-geometry true
+}
+
+layer-rule {
+    match namespace="^wallpaper-bg$"
+    place-within-backdrop true
+}
