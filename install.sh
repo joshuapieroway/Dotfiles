@@ -237,12 +237,10 @@ install_packages() {
 
   # Referenced by autostart.kdl, .zshrc, yazi.toml and the niri keybinds.
   install_group "Wayland runtime helpers" \
-    wl-clipboard cliphist matugen easyeffects playerctl \
     imv mpv grim slurp wlr-randr
 
   install_group "Desktop apps" \
-    firefox obsidian opencode \
-    cava fastfetch btop duf
+    cava fastfetch btop htop duf
 
   install_group "Gaming" \
     steam lutris prismlauncher mangohud gamescope
@@ -278,14 +276,6 @@ install_packages() {
   install_group "Audio and power" \
     pipewire pipewire-pulse wireplumber pipewire-alsa pipewire-jack \
     pavucontrol playerctl
-
-  # Spotify theming; AUR only, so it is allowed to fail quietly.
-  if [[ $NO_AUR -eq 0 && -n "$AUR_HELPER" ]]; then
-    install_group "Extras (AUR)" spicetify
-  fi
-
-  # Optional conveniences the guide mentions but nothing hard-depends on.
-  install_group "Optional" swayidle wl-clipboard
 }
 
 # ── fonts ─────────────────────────────────────────────────────────────────
