@@ -1,193 +1,87 @@
-// Material 3 Expressive motion profile for niri.
+// Material 3 Expressive motion tokens for niri.
 //
-// Expressive's premise is that fixed-duration curves feel dead. Containers
-// should move like objects: they carry the velocity of whatever set them in
-// motion and they settle with a small overshoot instead of stopping dead.
-// So most of what follows is a spring, deliberately underdamped.
+// Straight transcription of the M3 Expressive motion scheme. No custom tuning,
+// no custom shaders.
 //
-// Damping ratio is the whole ballgame here, and it is worth being blunt about
-// the numbers, because they are not intuitive:
+// Expressive is the current recommended M3 scheme (standard is the legacy
+// utilitarian one). The two differ in exactly the way that matters:
 //
-//   1.00  no overshoot at all      (niri's own default -- feels "correct", dead)
-//   0.90  0.2% -- imperceptible    (still effectively critically damped)
-//   0.80  1.5%                     barely there
-//   0.70  4.6%                     a real, tasteful bounce
-//   0.60  9.5%                     unmistakably springy
+//              standard      expressive
+//   spatial    0.9 / 700     0.8 / 380
+//   spatial    0.9 / 1400    0.6 / 800    <- fast
+//   spatial    0.9 / 300     0.8 / 200    <- slow
+//   effects    1.0 / 1600    1.0 / 1600
+//   effects    1.0 / 3800    1.0 / 3800
+//   effects    1.0 / 800     1.0 / 800
 //
-// Anything at 0.90 or above is a lie about being springy, so the discrete
-// moments here sit at 0.6-0.7 and only the continuously gesture-driven motion
-// stays high enough not to wobble under a hard flick. Those overshoot figures
-// are measured against niri's own spring implementation, and they barely move
-// even at high gesture velocities: at 0.80 the overshoot goes from 1.5% to 2.2%
-// between a standing start and a very fast flick.
+// Stiffness drops a lot and damping drops with it, so the expressive springs
+// are both slower to resolve and looser in the tail. That is the whole point:
+// a lower stiffness means a longer settle, which is where the bounce becomes
+// visible rather than being swallowed in the first few frames.
 //
-// Damping is never pushed above 1.0. Niri warns that overdamped springs have
+// Two token families:
+//
+//   spatial  position, size, bounds. Overshoots its target and bounces into
+//            place. This is where the expressive character lives.
+//   effects  opacity, colour. Critically damped at 1.0 in both schemes,
+//            deliberately: alpha that swings past 1.0 or dips below 0 before
+//            settling reads as a flicker, not as springiness. The split is not
+//            a style choice, and animating a fade with a spatial token is the
+//            single most common mistake when porting M3 motion.
+//
+// Easings (the legacy system, still what M3 uses for transitions, and the
+// only option niri gives window open/close):
+//     emphasized            cubic-bezier(0.2, 0, 0, 1)
+//     emphasized decelerate cubic-bezier(0.05, 0.7, 0.1, 1)   enter
+//     emphasized accelerate cubic-bezier(0.3, 0, 0.8, 0.15)  exit
+//     standard              cubic-bezier(0.2, 0, 0, 1)
+//     standard decelerate   cubic-bezier(0, 0, 0, 1)
+//     standard accelerate   cubic-bezier(0.3, 0, 1, 1)
+//     linear                cubic-bezier(0, 0, 1, 1)
+//
+// M3 also publishes cubic-bezier approximations of the springs for platforms
+// without spring support (expressive default spatial is 0.38, 1.21, 0.22, 1.0
+// over 500ms). Those control points overshoot 1.0 on the y axis. They are not
+// used here: niri has a real spring solver that carries gesture velocity, and
+// it resolves the overshoot properly, so approximating it with a bezier would
+// be strictly worse. See the note on the window lifecycle below.
+//
+// Damping is never pushed above 1.0: niri warns that overdamped springs have
 // numerical stability problems and can glitch.
-//
-// The two window lifecycle animations additionally use custom shaders, which
-// is where the shape morphing lives. Open and close deliberately do *not* use
-// the same curve: see the comments on each.
-//
-// The shaders are inline because niri only learned to load custom-shader from
-// a file after 26.04. Each one is a complete GLSL ES 1.00 fragment body; the
-// uniforms are supplied by niri and must not be redeclared here.
 
 animations {
-    
     // --- Navigation --------------------------------------------------------
 
-    // The most gestural thing on the screen, so also the springiest. 0.75
-    // gives a clear arrival bounce that a hard vertical swipe still settles.
+    // The most gestural thing on the screen. Default spatial: this one is
+    // usually launched by a touchpad flick, and a spring is the only animation
+    // type that inherits the release velocity instead of restarting from zero.
     workspace-switch {
-        spring damping-ratio=0.75 stiffness=700 epsilon=0.0001
+        spring damping-ratio=0.8 stiffness=380 epsilon=0.0001
     }
 
     // --- Window lifecycle ---------------------------------------------------
+    //
+    // Springs are off the table for both of these. M3 uses spring physics for
+    // spatial property changes, but what actually animates on a window open is
+    // mostly alpha, and a spatial spring on it would bounce the fade. It is
+    // also the one place where niri's spring would misbehave: a spring's
+    // progress runs past 1.0, which on an exit means the window briefly swells
+    // back outward while being dismissed.
+    //
+    // Enter and exit still never share a curve. Decelerate on the way in (fast
+    // start, gentle landing), accelerate on the way out (slow start, quick
+    // departure). Durations are medium2 (300ms) entering and short4 (200ms)
+    // exiting: M3 transitions out are consistently faster than in, because an
+    // exit is a dismissal and the user is waiting on it.
 
-    // A container does not simply fade in. It eases up into place from very
-    // slightly small, rounds off on the way, and settles.
-    //
-    // This is a spring specifically so the shader has an overshoot to read:
-    // niri_progress is unclamped and travels past 1.0, and the shader turns
-    // that into a scale that overshoots by about 0.6%. Opacity uses the
-    // clamped value, so the fade can never flash past fully opaque.
-    //
-    // Everything here is deliberately restrained. The first cut of this
-    // shader travelled 24% of its size, overshot 2.3% and opened as a near
-    // stadium shape, which read as a flourish rather than as a window
-    // arriving. If you want it louder, the three dials are the leading
-    // coefficient on `scale`, the M3_BLOB fraction, and the exponent on the
-    // fade -- in that order of how much each one shows.
     window-open {
-        spring damping-ratio=0.7 stiffness=1000 epsilon=0.0001
-        custom-shader r#"
-            // Must match layout window-rule geometry-corner-radius.
-            const float M3_CORNER = 10.0;
-
-            // How round the window starts out, as a fraction of its shortest
-            // side. 1.0 would be a circle; 0.30 is a generously rounded
-            // rectangle that still visibly rounds off on the way in.
-            const float M3_BLOB = 0.30;
-
-            // Signed distance to a rounded box centred on the origin.
-            float m3_rounded_box(vec2 point, vec2 half_size, float radius) {
-                vec2 q = abs(point) - half_size + radius;
-                return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
-            }
-
-            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
-                // Spring-driven scale: a touch under 1.0, a hair past it, back.
-                float scale = 0.86 + 0.14 * niri_progress;
-
-                // Screen position of this fragment, in logical pixels, window
-                // centred at the origin. Undo the scale to reach the window's
-                // own pixel coordinates.
-                vec2 pos = (coords_geo.xy - vec2(0.5)) * size_geo.xy;
-                vec2 local = pos / scale;
-
-                // Corner radius rounds off as the window opens, then settles
-                // onto the real radius. It never drops below the real radius,
-                // so this mask can only ever add rounding on top of what niri
-                // already drew. If it disagreed with geometry-corner-radius it
-                // would clip less, never more, and the window's own corners
-                // would simply show through.
-                float blob = M3_BLOB * min(size_geo.x, size_geo.y);
-                float radius = min(
-                    mix(blob, M3_CORNER, niri_clamped_progress),
-                    0.5 * min(size_geo.x, size_geo.y)
-                );
-
-                // One logical pixel of antialiasing. fwidth() is deliberately
-                // avoided: niri compiles these as GLSL ES 1.00, which has no
-                // derivatives extension.
-                float dist = m3_rounded_box(local, size_geo.xy * 0.5, radius);
-                float inside = 1.0 - smoothstep(-0.75, 0.75, dist);
-
-                // Sample the window texture through the same inverse scale.
-                vec3 coords_tex = niri_geo_to_tex * vec3(local / size_geo.xy + vec2(0.5), 1.0);
-                vec4 color = texture2D(niri_tex, coords_tex.st);
-
-                // A spring's progress is front-loaded: it is already ~60%
-                // done 50ms in, which made the window snap into existence.
-                // Raising it to a power trades a little of the arrival speed
-                // for a much softer onset, and lands on 1.0 exactly as the
-                // plain value does, so nothing is lost at the end.
-                float fade = pow(niri_clamped_progress, 1.5);
-
-                return color * inside * fade;
-            }
-        "#
+        duration-ms 300
+        curve "cubic-bezier" 0.05 0.7 0.1 1
     }
 
-    // The exact inverse: deflates back into a blob, shrinks, and tilts on the
-    // way out, with the tilt direction randomised per dismissal so a run of
-    // closed windows does not look mechanical.
-    //
-    // Easing, not a spring. A close is an exit, not a rebound -- an
-    // overshooting value would briefly swell the window back outward while it
-    // is being dismissed, which reads as a glitch rather than as physics. The
-    // energy lives in the shader and in the curve's acceleration instead.
     window-close {
         duration-ms 200
         curve "cubic-bezier" 0.3 0 0.8 0.15
-        custom-shader r#"
-            // Must match layout window-rule geometry-corner-radius.
-            const float M3_CORNER = 10.0;
-
-            // How round the window goes as it leaves. Matches M3_BLOB in the
-            // open shader, so a window closes back out of the shape it
-            // arrived in.
-            const float M3_BLOB = 0.30;
-
-            // Signed distance to a rounded box centred on the origin.
-            float m3_rounded_box(vec2 point, vec2 half_size, float radius) {
-                vec2 q = abs(point) - half_size + radius;
-                return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - radius;
-            }
-
-            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
-                // Clamped progress on purpose: see the note above.
-                float p = niri_clamped_progress;
-
-                // Shrink, but not to nothing: the window is still slightly
-                // there when it fades, which keeps the motion from reading as
-                // a plain dissolve. Mirrors the open shader's 0.14 travel.
-                float scale = 1.0 - 0.14 * p;
-
-                // Per-close tilt direction. Halved from the first cut, which
-                // swung +/- 2.6 degrees and read as a flourish.
-                float tilt = 0.022 * (fract(niri_random_seed) * 2.0 - 1.0);
-                float c = cos(tilt);
-                float s = sin(tilt);
-                mat2 unspin = mat2(c, -s, s, c);
-
-                // Screen position in logical pixels, then undo shrink and tilt.
-                vec2 pos = (coords_geo.xy - vec2(0.5)) * size_geo.xy;
-                vec2 local = unspin * (pos / scale);
-
-                // Reverse of the open morph: real radius out to blob.
-                float blob = M3_BLOB * min(size_geo.x, size_geo.y);
-                float radius = min(
-                    mix(M3_CORNER, blob, p),
-                    0.5 * min(size_geo.x, size_geo.y)
-                );
-
-                // One logical pixel of antialiasing. See the open shader.
-                float dist = m3_rounded_box(local, size_geo.xy * 0.5, radius);
-                float inside = 1.0 - smoothstep(-0.75, 0.75, dist);
-
-                // Sample the window texture through the same inverse transform.
-                vec3 coords_tex = niri_geo_to_tex * vec3(local / size_geo.xy + vec2(0.5), 1.0);
-                vec4 color = texture2D(niri_tex, coords_tex.st);
-
-                // Mirror of the open shader's pow(progress, 1.5): it holds the
-                // window opaque for longer on the way out, so a dismissal
-                // fades rather than blinks. Still reaches exactly 0 at p = 1.
-                float fade = pow(1.0 - p, 1.5);
-
-                return color * inside * fade;
-            }
-        "#
     }
 
     // --- Layout ------------------------------------------------------------
@@ -195,46 +89,62 @@ animations {
     // Identical on purpose. Niri drives these from a single config whenever
     // they have to stay in sync -- a resize that pushes the view off-screen
     // also moves the view -- and mismatched values would visibly tear.
+    //
+    // Default spatial. The 0.8 damping means these settle with a faint
+    // overshoot, which is what makes tiled movement read as material rather
+    // than as a slideshow.
 
     // Camera pan to a window that is off-screen.
     horizontal-view-movement {
-        spring damping-ratio=0.8 stiffness=700 epsilon=0.0001
+        spring damping-ratio=0.8 stiffness=380 epsilon=0.0001
     }
 
     // Columns sliding over as windows open and close.
     window-movement {
-        spring damping-ratio=0.8 stiffness=700 epsilon=0.0001
+        spring damping-ratio=0.8 stiffness=380 epsilon=0.0001
     }
 
     // Preset widths, and maximize/unmaximize.
     window-resize {
-        spring damping-ratio=0.8 stiffness=700 epsilon=0.0001
+        spring damping-ratio=0.8 stiffness=380 epsilon=0.0001
     }
 
     // --- Compositor UI ------------------------------------------------------
-    //
-    // Discrete events, so the damping drops further and the bounce is meant
-    // to be seen.
 
-    // Playful pop: 6.8% overshoot. This is the one animation you should
-    // actually notice.
+    // Config parse error notification: fast spatial. Small element, and at 0.6
+    // damping this is the most visibly springy thing in the config -- a real
+    // arrival bounce, not a nudge. It is discrete and rare, so it can afford
+    // to be the loudest motion here.
     config-notification-open-close {
-        spring damping-ratio=0.65 stiffness=1000 epsilon=0.001
+        spring damping-ratio=0.6 stiffness=800 epsilon=0.001
     }
 
-    // Slower and heavier than a notification, so a destructive dialog feels
-    // like it has mass rather than like a toast.
+    // The exit confirmation dialog. A dialog is a mid-sized surface, so
+    // default spatial per M3's "partially covers the screen" guidance. Its
+    // softness gives it a bit of mass -- a dialog should feel heavier than a
+    // toast, since it is asking you to make a decision.
     exit-confirmation-open-close {
-        spring damping-ratio=0.7 stiffness=600 epsilon=0.001
+        spring damping-ratio=0.8 stiffness=380 epsilon=0.001
     }
 
-    // Held higher than the rest: the overview is a spatial aid, and it is
-    // useless if the grid is still wobbling while you are trying to read it.
+    // Screenshot UI: enter easing, short4. A small overlay, and it only fades
+    // in -- there is no spatial property changing to justify a spring.
+    screenshot-ui-open {
+        duration-ms 200
+        curve "cubic-bezier" 0.05 0.7 0.1 1
+    }
+
+    // The overview is full-screen, which is the one case M3 assigns the slow
+    // token. The softness keeps the grid legible while it moves, and it is
+    // still a spatial spring at 0.8, so the arrival is soft rather than dead.
     overview-open-close {
-        spring damping-ratio=0.8 stiffness=700 epsilon=0.0001
+        spring damping-ratio=0.8 stiffness=200 epsilon=0.0001
     }
 
+    // Recent windows is a pure alpha fade with no movement to speak of, so it
+    // takes an effects token and not a spatial one. Critically damped: no
+    // bounce on the alpha.
     recent-windows-close {
-        spring damping-ratio=0.8 stiffness=700 epsilon=0.001
+        spring damping-ratio=1.0 stiffness=1600 epsilon=0.001
     }
 }

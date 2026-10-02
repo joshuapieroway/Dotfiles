@@ -9,10 +9,39 @@ layout {
     focus-ring {
         off
     }
+
+    // M3 elevation. M3 communicates depth primarily through surface tone, but
+    // it still ships a shadow per level, and on a wallpaper there is no tone
+    // shift to carry the depth -- the shadow is the only cue available.
+    //
+    // Level 2 is the "partially covers the screen" level, which is what a
+    // window is. Its spec is a two-part stack:
+    //
+    //   0 1px 2px 0 rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15)
+    //
+    // Niri takes a single shadow, so the tighter layer is dropped and the
+    // wide one is kept: softness 6, spread 2, offset y=2, at the 0.3 alpha
+    // that the two layers composite to.
+    //
+    // draw-behind-window stays off. It exists to hide shadow artifacts inside
+    // CSD rounded corners, and prefer-no-csd plus geometry-corner-radius
+    // already give niri the corner radius, so it would do nothing but push the
+    // shadow under the window and dim it.
+    shadow {
+        on
+        softness 6
+        spread 2
+        offset x=0 y=2
+        color "#0000004D"
+        inactive-color "#00000033"
+    }
 }
 
 window-rule {
-    geometry-corner-radius 10
+    // M3 shape scale: none 0, extra small 4, small 8, medium 12, large 16,
+    // extra large 28. A window is a large surface, so large it is. The
+    // previous 10 sat between small and medium, which is not a value M3 has.
+    geometry-corner-radius 16
     clip-to-geometry true
 }
 
