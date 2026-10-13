@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=SillyTavern
+Exec=/home/delta/.local/bin/sillytavern
+Type=Application
+Terminal=false
+Icon=text-html

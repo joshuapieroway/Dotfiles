@@ -1,0 +1,32 @@
+[Unit]
+Description=Arknights ranked gallery (phone browsable over LAN)
+Documentation=file:%h/Projects/arknights-gallery/server.py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/arknights-gallery
+ExecStart=/usr/bin/python3 %h/Projects/arknights-gallery/server.py --port 8080
+Restart=on-failure
+RestartSec=5
+# The server is read-only and forks one thread per connection; it should never
+# be the reason the desktop feels slow.
+Nice=5
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=2G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+# The parent ~/.cache is made writable, not the leaf. A leaf bind-mount is
+# resolved once at startup, so if the cache is wiped while the service runs the
+# path becomes a deleted inode on a read-only mount and the server cannot
+# recreate it (Errno 30). Writable parent + in-code makedirs = self-healing.
+# Neither spelling works alone: ReadWritePaths alone dies with 226/NAMESPACE
+# when the dir does not exist at start, CacheDirectory alone cannot self-heal.
+ReadWritePaths=%h/.cache
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,6 @@
+#!/bin/bash
+mkdir -p ~/.local/state/sillytavern
+cd ~/Projects/SillyTavern && nohup node server.js > ~/.local/state/sillytavern/log.txt 2>&1 < /dev/null &
+disown
+sleep 3
+xdg-open http://localhost:8000 || firefox http://localhost:8000

@@ -1,25 +1,24 @@
 window-rule {
-    match app-id=r#"^(Twintaillauncher|app\.twintaillauncher\.ttl)$"#
-    open-maximized true
+    geometry-corner-radius 10
+    clip-to-geometry true
 }
 
 window-rule {
-    match app-id=r#"^(net\.lutris\.Lutris|lutris)$"#
-    open-maximized true
-}
-
-window-rule {
-    match app-id=r#"^steam$"#
-    open-maximized true
-}
-
-window-rule {
-    match app-id=r#"^(org\.prismlauncher\.PrismLauncher|PrismLauncher)$"#
-    open-maximized true
-}
-
-window-rule {
-    match app-id="^(com.shellyorg.shelly)"
+    match app-id="^mpv$"
     open-floating true
 }
 
+window-rule {
+    match app-id="^imv$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^org.gnome.Calculator$"
+    open-floating true
+}
+
+window-rule {
+    match app-id="^org.gnome.Nautilus"
+    open-floating true
+}

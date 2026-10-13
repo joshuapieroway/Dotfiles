@@ -1,5 +1,5 @@
-spawn-at-startup "bash" "-c" "wl-paste --type text --watch cliphist store"
-spawn-at-startup "bash" "-c" "wl-paste --type image --watch cliphist store"
+spawn-at-startup "zsh" "-c" "wl-paste --type text --watch cliphist store"
+spawn-at-startup "zsh" "-c" "wl-paste --type image --watch cliphist store"
 spawn-at-startup "systemctl" "--user" "enable" "--now" "easyeffects"
-spawn-at-startup "serpantinumd" "start" 
-
+// serpantinumd is started by the serpantinum.service user unit (compositor-agnostic)
+spawn-at-startup "xwayland-satellite"

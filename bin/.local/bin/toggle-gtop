@@ -1,0 +1,37 @@
+#!/bin/sh
+# Toggle gtop floating window (kitty --class gtop -e gtop).
+# - no gtop window -> spawn it
+# - gtop focused -> close it (all gtop windows)
+# - gtop exists but not focused -> focus most recent one
+exec python3 - <<'PY'
+import json, subprocess, sys
+
+def run(*args):
+    r = subprocess.run(args, capture_output=True, text=True)
+    return r
+
+r = run("niri", "msg", "-j", "windows")
+try:
+    wins = json.loads(r.stdout or "[]")
+except json.JSONDecodeError:
+    sys.exit(1)
+
+htop = [w for w in wins if w.get("app_id") == "htop"]
+if not htop:
+    subprocess.Popen(["niri", "msg", "action", "spawn", "--",
+                      "kitty", "--class", "htop", "-e", "htop"],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    sys.exit(0)
+
+# most recent by focus_timestamp, fallback to first
+def ts(w):
+    t = w.get("focus_timestamp") or {}
+    return (t.get("secs", 0), t.get("nanos", 0))
+htop.sort(key=ts, reverse=True)
+
+if any(w.get("is_focused") for w in htop):
+    for w in htop:
+        run("niri", "msg", "action", "close-window", "--id", str(w["id"]))
+else:
+    run("niri", "msg", "action", "focus-window", "--id", str(htop[0]["id"]))
+PY

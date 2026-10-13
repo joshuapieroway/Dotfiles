@@ -1,0 +1,56 @@
+# gallery-dl launcher config
+
+# MAX_JOBS — how many downloads may run at the same time.
+#
+# Gelbooru's image CDN sheds load by returning 404s when overloaded. Running ~20
+# gallery-dl processes at once produced ~3000 bogus "404 Not Found" errors and
+# crawled; 4 concurrent runs produce zero 404s and roughly the same total
+# throughput. Keep this low. Raise it only if you have evidence the CDN tolerates it.
+MAX_JOBS=4
+
+# POLL — seconds between dispatcher checks for a free slot / queued work.
+POLL=10
+
+# START_GAP — seconds to wait between launching two queued jobs, so a burst of
+# queued work doesn't hit the API all at once.
+START_GAP=5
+
+# ---------------------------------------------------------------------------
+# Series
+# ---------------------------------------------------------------------------
+# A series is a parent folder under $GDL_ROOT (default ~/Pictures):
+#     ~/Pictures/<series>/<character>/
+# The series is ALWAYS explicit — you type `arknights:yvonne`, never a bare
+# `yvonne` — because a bare name can't say which franchise it belongs to, and
+# Endfield characters are all tagged `_(arknights)`, the same qualifier as the
+# base game, so the tag gives no hint either.
+#
+# Each series maps to the tag qualifier Gelbooru uses for that franchise, so a
+# bare character name expands correctly once the series is known.
+#
+# Add your own with:  SERIES_<name>=<booru_tag_qualifier>
+# ---------------------------------------------------------------------------
+# Booru — the source being downloaded from
+# ---------------------------------------------------------------------------
+# gelbooru | rule34 | danbooru. Drives the gallery-dl URL, the auth flags and
+# the post-count probe. Rule34 automatically gets the blocklist below appended.
+# The booru is recorded per job in queue/<booru>/<series>/<char>.tags, so
+# switching this mid-flight doesn't retarget already-queued work.
+BOORU=gelbooru
+
+SERIES_arknights=arknights
+SERIES_zenless_zone_zero=zenless_zone_zero
+NSFW=true
+
+# Pixiv tags differently: one flat, case-sensitive tag per search
+# (gallery-dl uses https://www.pixiv.net/en/tags/<Tag>), not gelbooru's
+# `character_(series)`. Set the franchise's REAL pixiv base tag here and the
+# character name is appended:
+#
+#   arknights:yvonne  ->  <base>_yvonne
+#
+# Left unset deliberately: I could not confirm the real Endfield tag spelling
+# because the account got rate-limited (429) while testing. Find it on a pixiv
+# artwork page — the URL path /tags/<Tag> — and put it here. Without an entry
+# the series name is used as the base, which usually matches nothing.
+# PIXIV_TAG_arknights=

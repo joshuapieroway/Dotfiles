@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 #
-# install.sh — bootstrap a CachyOS/Arch machine to match this dotfiles repo.
+# install.sh — bootstrap an Arch/CachyOS machine to match this dotfiles repo.
 #
-# Installs every package the configs actually reference, drops the Maple Mono
-# NF font kitty.conf asks for, clones the repo if it is missing, and wires
-# ~/.config/{niri,nvim,kitty,yazi} up as symlinks into the repo so edits are
-# live (no rsync step).
+# Installs every package the configs actually reference, drops the fonts kitty
+# and the prompt ask for, clones the zsh plugins, and wires the repo up as
+# symlinks into ~ so edits are live (no rsync step).
 #
 # Idempotent: safe to re-run. Already-installed packages are skipped, correct
 # symlinks are left alone, and anything in the way is backed up, never deleted.
@@ -252,21 +251,6 @@ install_group() {
 # this script needs to run. Nothing else. A package earns its place only if
 # grep finds it in a keybind, an autostart line, a yazi opener, a shell alias,
 # or an env var the compositor reads.
-#
-# Deliberately NOT installed, because no config references them — add them by
-# hand if you want them:
-#   browsers      brave / firefox        (keybinds.kdl:3 spawns "brave-origin",
-#                                        which no Arch package ships anyway)
-#   gaming        steam lutris prismlauncher mangohud gamescope, and the
-#                 32-bit lib32-* Vulkan/Mesa drivers that only exist for
-#                 Proton. The niri window rules for these are inert matchers;
-#                 they cost nothing if you install the apps later.
-#   media/music   cava                   (audio visualiser)
-#   sysinfo       fastfetch btop htop duf
-#   misc          ripgrep jq github-cli qt5ct grim slurp wlr-randr
-#
-# Anything the configs need that is NOT a pacman package (serpantinum,
-# brave-origin, flatpak, ~/.local/bin/liked) is reported by verify() instead.
 
 install_packages() {
   step "Installing packages"
@@ -274,13 +258,13 @@ install_packages() {
   # bash is not implicit here: autostart.kdl spawns it as argv[0] on two lines.
   # curl is what install_font uses to fetch Maple Mono NF.
   install_group "Base toolchain" \
-    bash base-devel git curl
+    bash base-devel git curl unzip
 
   # niri execs xwayland-satellite itself (config/env.kdl), and env.kdl points
   # Qt and GTK at qt6ct and Papirus, so both themes are load-bearing.
   install_group "Compositor and session" \
     niri xwayland-satellite \
-    qt6ct papirus-icon-theme
+    qt6ct papirus-icon-theme adw-gtk-theme
 
   # kitty/neovim/yazi are spawned by keybinds.kdl and yazi.toml; the zsh trio
   # is sourced unconditionally by .zshrc, so it is mandatory, not cosmetic.
@@ -297,8 +281,7 @@ install_packages() {
 
   # autostart.kdl starts a cliphist daemon behind wl-paste and enables the
   # easyeffects unit on every login; .zshrc pipes fzf output into wl-copy;
-  # kitty.conf uses xdg-open for URL hints. All four were referenced but never
-  # installed before, so the clipboard and audio FX silently did nothing.
+  # kitty.conf uses xdg-open for URL hints.
   install_group "Session runtime" \
     wl-clipboard cliphist easyeffects xdg-utils
 
@@ -340,19 +323,84 @@ install_packages() {
     fi
   fi
   install_group "Audio and power" "${audio[@]}"
+
+  # GTK/Qt theming: gtk-3.0/settings.ini, gtk-4.0/settings.ini, qt5ct.conf,
+  # qt6ct.conf, xsettingsd.conf, and .gtkrc-2.0 all reference these.
+  install_group "Theming and GTK/Qt" \
+    gtk3 gtk4 qt5ct \
+    xsettingsd nwg-look \
+    noto-fonts noto-fonts-cjk noto-fonts-emoji \
+    ttf-jetbrains-mono ttf-nerd-fonts-symbols-common \
+    otf-font-awesome woff2-font-awesome awesome-terminal-fonts
+
+  # Desktop utilities referenced by configs and scripts.
+  install_group "Desktop utilities" \
+    cava fastfetch mangohud lsp-plugins \
+    openrgb \
+    brightnessctl pamixer \
+    wl-gammarelay-rs wmctrl socat \
+    zbar ffmpegthumbnailer mediainfo \
+    inotify-tools libnotify libappindicator libva-utils
+
+  # xdg-desktop-portal backends referenced by niri-portals.conf.
+  install_group "Portals" \
+    xdg-desktop-portal-gtk xdg-desktop-portal-wlr
+
+  # Fonts referenced by kitty.conf and p10k.
+  install_group "Fonts" \
+    ttf-jetbrains-mono ttf-nerd-fonts-symbols-common \
+    otf-font-awesome woff2-font-awesome awesome-terminal-fonts \
+    noto-fonts noto-fonts-cjk noto-fonts-emoji
+
+  # Misc tools used by scripts and configs.
+  install_group "Misc tools" \
+    alsa-utils bc fd jq ripgrep htop \
+    vim wget 7zip acpi \
+    power-profiles-daemon \
+    networkmanager bluez bluez-utils
+
+  # GPU and gaming.
+  install_group "GPU and gaming" \
+    vulkan-radeon lib32-vulkan-radeon vulkan-tools \
+    gamemode
+
+  # Development tools.
+  install_group "Development" \
+    docker docker-compose nodejs npm jdk17-openjdk \
+    python-jeepney python-websockets
+
+  # Applications referenced by keybinds and configs.
+  install_group "Applications" \
+    librewolf spotify spotify-qt-debug librespot \
+    flatpak fuse2 gvfs-mtp ark \
+    kdenlive obsidian
+
+  # AUR packages.
+  install_group "AUR packages" \
+    gallery-dl-git spicetify-cli satty \
+    wf-recorder gpu-screen-recorder \
+    v4l2loopback-dkms v4l2loopback-utils \
+    protonup-qt-bin ddcutil
+
+  # System utilities.
+  install_group "System" \
+    zram-generator systemd-resolvconf efibootmgr \
+    linux-firmware
 }
 
 # ── fonts ─────────────────────────────────────────────────────────────────
-# kitty.conf pins "Maple Mono NF Bold", which no Arch package ships.
+# kitty.conf pins "JetBrains Mono" and "Iosevka Nerd Font" (via symbol_map).
+# JetBrains Mono is in the repos (ttf-jetbrains-mono). Iosevka Nerd Font is
+# in the AUR. This function installs Iosevka Nerd Font if missing.
 install_font() {
-  step "Installing Maple Mono NF"
+  step "Installing fonts"
 
-  if fc-list 2>/dev/null | grep -qi 'Maple Mono NF'; then
-    ok "Maple Mono NF already present"
+  if fc-list 2>/dev/null | grep -qi 'Iosevka Nerd Font'; then
+    ok "Iosevka Nerd Font already present"
     return 0
   fi
 
-  local url="https://github.com/subframe7536/maple-font/releases/latest/download/MapleMono-NF-unhinted.zip"
+  local url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Iosevka.zip"
   local fontdir="$HOME/.local/share/fonts"
   local tmp
   tmp="$(mktemp -d)"
@@ -365,7 +413,7 @@ install_font() {
   fi
 
   if command -v curl >/dev/null; then
-    curl -fL --retry 2 --max-time 180 -o "$tmp/maple.zip" "$url" \
+    curl -fL --retry 2 --max-time 180 -o "$tmp/iosevka.zip" "$url" \
       || { warn "font download failed — kitty will fall back to its default face"; return 0; }
   else
     warn "curl missing — skipping font"
@@ -374,14 +422,43 @@ install_font() {
 
   mkdir -p "$fontdir"
   if command -v unzip >/dev/null; then
-    unzip -oq "$tmp/maple.zip" -d "$fontdir" || warn "unzip failed"
+    unzip -oq "$tmp/iosevka.zip" -d "$fontdir" || warn "unzip failed"
   else
     warn "unzip missing — install it and re-run, or fetch the font manually"
     return 0
   fi
 
   command -v fc-cache >/dev/null && fc-cache -f "$fontdir" >/dev/null 2>&1 || true
-  ok "Maple Mono NF installed to $fontdir"
+  ok "Iosevka Nerd Font installed to $fontdir"
+}
+
+# ── zsh plugins ──────────────────────────────────────────────────────────
+# .zshrc sources ~/.zsh/zsh-autosuggestions and ~/.zsh/zsh-syntax-highlighting.
+# These are git repos, not pacman packages. Clone them if missing.
+install_zsh_plugins() {
+  step "Installing zsh plugins"
+
+  local plugins=(
+    "zsh-autosuggestions https://github.com/zsh-users/zsh-autosuggestions"
+    "zsh-syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting"
+  )
+
+  for entry in "${plugins[@]}"; do
+    local name="${entry%% *}"
+    local url="${entry#* }"
+    local dest="$HOME/.zsh/$name"
+
+    if [[ -d "$dest/.git" ]]; then
+      ok "$name already cloned"
+    elif [[ $DRY_RUN -eq 1 ]]; then
+      info "${C_DIM}dry-run: git clone $url -> $dest${C_RESET}"
+    else
+      mkdir -p "$HOME/.zsh"
+      git clone --depth=1 "$url" "$dest" \
+        && ok "$name cloned" \
+        || warn "failed to clone $name"
+    fi
+  done
 }
 
 # ── repo ──────────────────────────────────────────────────────────────────
@@ -446,13 +523,13 @@ check_repo_layout() {
 # with no copy or rsync step.
 BACKUP_SUFFIX=".bak.$(date +%Y%m%d%H%M%S)"
 
-link_app() {
-  local app="$1"
-  local src="$REPO_PATH/$app/.config/$app"
-  local dst="$HOME/.config/$app"
+# link_entries <src_dir> <dst_dir>
+# Symlinks each entry in src_dir into dst_dir, backing up anything in the way.
+link_entries() {
+  local src="$1" dst="$2"
 
   if [[ ! -d "$src" ]]; then
-    skip "$app — no config in repo, leaving alone"
+    skip "$(basename "$src") — no config in repo, leaving alone"
     return 0
   fi
 
@@ -491,34 +568,90 @@ link_app() {
     ln -s "$want" "$target" && linked=$((linked + 1))
   done < <(find "$src" -mindepth 1 -maxdepth 1 -printf '%f\0' 2>/dev/null)
 
-  printf '    %s✓%s %-6s %s\n' "$C_GREEN" "$C_RESET" "$app" \
+  printf '    %s✓%s %-20s %s\n' "$C_GREEN" "$C_RESET" "$(basename "$src")" \
     "${linked} linked, ${kept} already correct, ${backed} backed up"
   if ((backed > 0)); then
     skip "backups use suffix ${BACKUP_SUFFIX}"
   fi
 }
 
+# link_file <src_file> <dst_file>
+# Symlinks a single file, backing up anything in the way.
+link_file() {
+  local src="$1" dst="$2"
+
+  [[ -f "$src" ]] || { skip "$(basename "$src") — not in repo"; return 0; }
+
+  if [[ -L "$dst" && "$(readlink -f "$dst")" == "$(readlink -f "$src")" ]]; then
+    skip "$(basename "$dst") already linked"
+  elif [[ $DRY_RUN -eq 1 ]]; then
+    info "${C_DIM}dry-run: link $(basename "$dst") -> $src${C_RESET}"
+  elif [[ -e "$dst" ]]; then
+    mv "$dst" "${dst}${BACKUP_SUFFIX}" 2>/dev/null && info "backed up existing $(basename "$dst")"
+    ln -s "$src" "$dst" && ok "linked $(basename "$dst")"
+  else
+    ln -s "$src" "$dst" && ok "linked $(basename "$dst")"
+  fi
+}
+
 link_configs() {
   step "Wiring configs"
+
+  # Standard .config apps — repo dir app/.config/app maps to ~/.config/app
   local app
-  for app in niri nvim kitty yazi; do
-    link_app "$app"
+  for app in niri nvim kitty yazi qt xsettingsd easyeffects mpv cava \
+             fastfetch spicetify mangohud lsp-plugins nwg-look gallery-dl \
+             portal systemd environment.d; do
+    link_entries "$REPO_PATH/$app/.config/$app" "$HOME/.config/$app"
   done
 
-  # .zshrc and .p10k.zsh live at the top of the repo, not under a .config dir.
-  local f
-  for f in .zshrc .p10k.zsh; do
-    local src="$REPO_PATH/zsh/$f" target="$HOME/$f"
-    [[ -f "$src" ]] || { skip "$f — not in repo"; continue; }
-    if [[ -L "$target" && "$(readlink -f "$target")" == "$(readlink -f "$src")" ]]; then
-      skip "$f already linked"
-    elif [[ $DRY_RUN -eq 1 ]]; then
-      info "${C_DIM}dry-run: link $f -> $src${C_RESET}"
-    elif [[ -e "$target" ]]; then
-      mv "$target" "${target}${BACKUP_SUFFIX}" 2>/dev/null && info "backed up existing $f"
-      ln -s "$src" "$target" && ok "linked $f"
+  # GTK — two subdirs plus a top-level dotfile
+  link_entries "$REPO_PATH/gtk/.config/gtk-3.0" "$HOME/.config/gtk-3.0"
+  link_entries "$REPO_PATH/gtk/.config/gtk-4.0" "$HOME/.config/gtk-4.0"
+  link_file "$REPO_PATH/gtk/.gtkrc-2.0" "$HOME/.gtkrc-2.0"
+
+  # mimeapps.list — a single file, not a directory
+  link_file "$REPO_PATH/mimeapps/.config/mimeapps.list" "$HOME/.config/mimeapps.list"
+
+  # user-dirs — two files
+  link_file "$REPO_PATH/user-dirs/.config/user-dirs.dirs" "$HOME/.config/user-dirs.dirs"
+  link_file "$REPO_PATH/user-dirs/.config/user-dirs.locale" "$HOME/.config/user-dirs.locale"
+
+  # spotify-flags.conf — a single file
+  link_file "$REPO_PATH/spotify/.config/spotify-flags.conf" "$HOME/.config/spotify-flags.conf"
+
+  # Top-level dotfiles
+  link_file "$REPO_PATH/zsh/.zshrc" "$HOME/.zshrc"
+  link_file "$REPO_PATH/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+  link_file "$REPO_PATH/zsh/.zshenv" "$HOME/.zshenv"
+
+  # .local/bin scripts
+  link_entries "$REPO_PATH/bin/.local/bin" "$HOME/.local/bin"
+
+  # .local/share/applications
+  link_entries "$REPO_PATH/applications/.local/share/applications" "$HOME/.local/share/applications"
+}
+
+# ── systemd user units ───────────────────────────────────────────────────
+enable_units() {
+  step "Enabling systemd user units"
+
+  if ! command -v systemctl >/dev/null; then
+    skip "systemctl not found — skipping"
+    return 0
+  fi
+
+  local unit
+  for unit in openrgb arknights-gallery; do
+    local src="$REPO_PATH/systemd/.config/systemd/user/${unit}.service"
+    [[ -f "$src" ]] || { skip "$unit.service — not in repo"; continue; }
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+      info "${C_DIM}dry-run: systemctl --user enable --now $unit${C_RESET}"
+    elif systemctl --user enable --now "$unit" >/dev/null 2>&1; then
+      ok "$unit.service enabled"
     else
-      ln -s "$src" "$target" && ok "linked $f"
+      warn "could not enable $unit.service — try: systemctl --user enable --now $unit"
     fi
   done
 }
@@ -536,16 +669,6 @@ post_install() {
     info "${C_DIM}dry-run: chsh -s /bin/zsh${C_RESET}"
   elif confirm "Set zsh as your default shell (currently $current)?"; then
     run_privileged chsh -s /bin/zsh "$(id -un)" && ok "default shell set to zsh"
-  fi
-
-  # autostart.kdl also does this every login, but doing it now means the
-  # effects are live without a reboot.
-  if command -v systemctl >/dev/null && [[ $DRY_RUN -eq 0 ]]; then
-    if systemctl --user enable --now easyeffects >/dev/null 2>&1; then
-      ok "easyeffects user service enabled"
-    else
-      skip "easyeffects will be enabled on next niri login"
-    fi
   fi
 
   # Open the firewall if ufw is present but inactive.
@@ -568,6 +691,7 @@ verify() {
     wl-copy wl-paste cliphist easyeffects xdg-open
     imv mpv playerctl
     pavucontrol wpctl clangd tree-sitter
+    fastfetch cava openrgb
   )
   local -a missing=()
   local b
@@ -581,30 +705,11 @@ verify() {
     warn "still missing: ${missing[*]}"
   fi
 
-  # These are invoked by the configs but are not pacman packages, so this script
-  # cannot install them and will not pretend to. Report them separately: a
-  # missing one means keybinds silently do nothing at login.
-  #   serpantinum  bar/launcher/screenshots/volume + 20 workspace routes
-  #                (keybinds.kdl, ~40 spawns) and serpantinumd (autostart.kdl)
-  #   brave-origin Mod+B (keybinds.kdl:3) — Arch's brave package ships
-  #                "brave", not "brave-origin", so this key is unbacked
-  #   flatpak      Mod+O runs `flatpak run ai.opencode.opencode`
-  #   liked        Mod+Shift+L runs $HOME/.local/bin/liked
-  local -a external=(serpantinum serpantinumd brave-origin liked)
-  local -a absent=()
-  for b in "${external[@]}"; do
-    command -v "$b" >/dev/null 2>&1 || absent+=("$b")
-  done
-  if ((${#absent[@]})); then
-    warn "not on PATH, so those keybinds will do nothing: ${absent[*]}"
-    info "see SYSTEM-GUIDE.md for how these are installed"
-  else
-    ok "external keybind helpers are on PATH"
-  fi
-
-  # Symlink health.
+  # Symlink health — check all wired config dirs.
   local broken=0 d
-  for d in niri nvim kitty yazi; do
+  for d in niri nvim kitty yazi gtk qt xsettingsd easyeffects mpv cava \
+           fastfetch spicetify mangohud lsp-plugins nwg-look gallery-dl \
+           portal systemd environment.d spotify; do
     local p
     while IFS= read -r p; do
       [[ -e "$p" ]] || { err "broken symlink: $p -> $(readlink "$p")"; broken=1; }
@@ -633,40 +738,7 @@ $(printf '%s' "$C_BOLD")Next steps$(printf '%s' "$C_RESET")
          Add a second layout:  layout "us,ca"  in config/input.kdl
        - You have no quit binding. Log out with:  niri msg action quit
 
-  $(printf '%s' "$C_DIM")-----------------------------------------------------------------------$(printf '%s' "$C_RESET")
-  $(printf '%s' "$C_BOLD")These dotfiles are intended for use with the Serpantinum$(printf '%s' "$C_RESET")
-  $(printf '%s' "$C_BOLD")desktop shell — install it or most keybinds do nothing.$(printf '%s' "$C_RESET")
-  $(printf '%s' "$C_DIM")-----------------------------------------------------------------------$(printf '%s' "$C_RESET")
-
-  Serpantinum is a Quickshell/QML shell that owns the bar, the app launcher and
-  every popout. It is not optional decoration here: almost every binding in
-  config/keybinds.kdl is a serpantinum command, not a niri action — the bar,
-  Mod+Space, screenshots, volume, lock, and all twenty workspace routes. Skip
-  it and you get a bare compositor with keys wired to nothing.
-
-  Install (Arch/CachyOS), from a normal user shell — do NOT run this as root:
-
-      bash -c "\$(curl -fsSL https://raw.githubusercontent.com/ilyamiro/serpantinum/master/install/install.sh)"
-
-  It clones itself to ~/.local/share/serpantinum/src/ and installs serpantinum
-  and serpantinumd into ~/.local/bin, which .zshrc already puts on your PATH.
-  autostart.kdl starts the daemon for you via "serpantinumd start".
-  It clones an AUR helper (paru or yay) if you have none, pulls quickshell,
-  and asks before enabling telemetry. Re-run it and choose "update" to upgrade.
-
-  Worth knowing before you run it:
-    - Choose niri when it asks which compositor to wire up. Since v2 it leaves
-      monitors, keybinds and autostart to you, so it will not fight this repo.
-    - An update overwrites the local Bluetooth bar patch — see SYSTEM-GUIDE.md
-      §10 and re-apply it, or drop a pristine BtWidget.qml.orig alongside it.
-    - It installs its own dependency set, which is a lot larger than the
-      trimmed list this script uses, and includes matugen, fastfetch, ripgrep,
-      grim, slurp, ffmpeg and nautilus. Those are its requirements, not
-      anything the configs here reference.
-
-  Confirm it landed with:  serpantinum -V   and   serpantinumd status
-
-  4. Full reference: SYSTEM-GUIDE.md §4 (Serpantinum) and §10 (gotchas)
+  4. Full reference: SYSTEM-GUIDE.md
 EOF
 }
 
@@ -677,10 +749,12 @@ main() {
   if [[ $SKIP_PACKAGES -eq 0 ]]; then
     install_packages
     install_font
+    install_zsh_plugins
   else
     step "Skipping packages (--skip-packages)"
   fi
   link_configs
+  enable_units
   post_install
   verify
   summary

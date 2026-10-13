@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Neovim (kitty)
+GenericName=Text Editor
+Comment=Edit text files with Neovim in a kitty window
+Exec=kitty --single-instance --title nvim -- nvim %F
+Icon=nvim
+Terminal=false
+StartupNotify=true
+Categories=Development;TextEditor;
+MimeType=text/plain;text/markdown;text/x-markdown;application/json;application/x-shellscript;application/x-sh;

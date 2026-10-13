@@ -1,0 +1,35 @@
+# Theme-coloured lightning cursor trail.
+#
+# Colours come from the cursor colour at runtime, so it re-tints itself when
+# matugen regenerates colors.conf for a new wallpaper. Nothing to update here
+# when the theme changes.
+#
+# The `var` lines below re-declare the shader's `static const` values without
+# editing the .slang. Drop any line to fall back to the shader's own default.
+# All colours are linear RGB.
+
+startgroup
+    animation_start cursor-trail-move
+    animation_stop cursor-trail-stop
+
+    # Bolt lifetime in seconds. Shorter reads as a crackle rather than an arc.
+    var float DURATION 0.11
+    # How jagged the bolt is, relative to its length.
+    var float JAGGEDNESS 0.07
+    # Core stroke width and glow radius, in pixels. Keep the halo tight: a wide
+    # one washes the bolt out into a smear, especially on light themes.
+    var float CORE_WIDTH 0.85
+    var float GLOW_WIDTH 2.8
+    # Segments making up the bolt. More is smoother but costs GPU.
+    var int BOLT_SEGMENTS 12
+    # How far the bolt core is pushed toward white. Higher reads as a hot
+    # filament; lower keeps the core in the theme colour.
+    var float BOLT_WHITENESS 0.5
+    # Brightness of the outer glow relative to the theme colour. Kept low on
+    # purpose so the bolt stays a thin filament instead of a blob of colour.
+    var float GLOW_GAIN 0.26
+    # Floor for very dark theme colours so the bolt stays visible.
+    var float DARK_COLOR_FLOOR 0.18
+
+    shaders theme-lightning
+endgroup

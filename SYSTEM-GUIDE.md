@@ -4,28 +4,27 @@ A reference for this machine: what is installed, how it is wired together, and h
 drive it. Written against the live system, not from memory.
 
 - **User:** Joshua Pieroway (`delta`)
-- **Base:** CachyOS (Arch), Wayland-only
+- **Base:** CachyOS (Arch), Wayland-only, kernel 7.2.8-arch1-2
 - **Dotfiles:** `~/Dotfiles` → <https://github.com/joshuapieroway/Dotfiles>
-- **Last verified:** 2026-09-26
+- **Last verified:** 2026-10-12
 
 ---
 
 ## Table of contents
 
 1. [At a glance](#1-at-a-glance)
-2. [How the dotfiles are actually wired](#2-how-the-dotfiles-are-actually-wired) ← **read this first**
+2. [How the dotfiles are wired](#2-how-the-dotfiles-are-wired)
 3. [Niri — Wayland compositor](#3-niri--wayland-compositor)
-   - [3.3 Niri's default keybindings are NOT active](#33-niris-default-keybindings-are-not-active) ← **read this**
-4. [Serpantinum — desktop shell](#4-serpantinum--desktop-shell)
-5. [Zsh + Powerlevel10k + zoxide](#5-zsh--powerlevel10k--zoxide)
-6. [Neovim](#6-neovim)
-   - [6.13 Reading markdown (markview)](#613-reading-markdown-markview)
-   - [6.14 Ordering rules that bite in this config](#614-ordering-rules-that-bite-in-this-config) ← **read this**
-7. [Kitty](#7-kitty)
-8. [Yazi](#8-yazi)
-9. [Other notable software](#9-other-notable-software)
-10. [Gotchas and traps](#10-gotchas-and-traps)
-11. [Quick reference card](#11-quick-reference-card)
+4. [Zsh + Powerlevel10k + zoxide](#4-zsh--powerlevel10k--zoxide)
+5. [Neovim](#5-neovim)
+6. [Kitty](#6-kitty)
+7. [Yazi](#7-yazi)
+8. [Theming — GTK / Qt / xsettingsd](#8-theming--gtk--qt--xsettingsd)
+9. [Audio — PipeWire + EasyEffects](#9-audio--pipewire--easyeffects)
+10. [Session utilities](#10-session-utilities)
+11. [Other software](#11-other-software)
+12. [Gotchas and traps](#12-gotchas-and-traps)
+13. [Quick reference card](#13-quick-reference-card)
 
 ---
 
@@ -34,27 +33,24 @@ drive it. Written against the live system, not from memory.
 | Component | Version | Notes |
 |---|---|---|
 | Niri | 26.04 (`8ed0da4`) | Scrollable-tiling Wayland compositor |
-| Serpantinum | 2.1.9 (commit `14f5e45`) | Quickshell desktop shell: bar, launcher, all popouts |
 | Kitty | 0.49.1 | Terminal. `Mod+Return` |
 | Neovim | 0.12.5 | LazyVim-style *minimal custom* config — **not** LazyVim itself |
-| Zsh | 5.9.2 | oh-my-zsh (CachyOS config) + Powerlevel10k |
+| Zsh | 5.9.2 | CachyOS config + Powerlevel10k |
 | Yazi | 26.9.1 | File manager, `Mod+F` |
 | zoxide | 0.10.0 | Directory jumper |
-| fzf | 0.74.4 | Fuzzy finder (shell `emoji` picker) |
+| fzf | 0.74.4 | Fuzzy finder |
 | eza | — | `ls` replacement |
 | bat | 0.26.1 | `cat` replacement |
-| matugen | 4.2.0 | Generates theme colors for niri/kitty/cava/fastfetch |
+| EasyEffects | — | PipeWire audio FX (equalizer) |
+| Cava | — | Terminal audio visualizer |
 | Monitor | DP-2 | 2560x1440 @ 165.006 Hz, scale 1.0 |
 
-Toolchain present: `clangd`, `gcc`, `g++`, `mpv`, `imv`, `steam`, `lutris`, `prismlauncher`,
-`btop`, `duf`, `playerctl`, `easyeffects`, `jq`, `gh`.
-
-> **Note:** `tree-sitter` (the CLI) is **not** installed, and neither is `dust`, `procs`,
-> `lazygit`, or `delta`. See [Gotchas](#10-gotchas-and-traps).
+Toolchain present: `clangd`, `gcc`, `g++`, `mpv`, `imv`, `playerctl`, `easyeffects`,
+`jq`, `gh`, `fd`, `ripgrep`.
 
 ---
 
-## 2. How the dotfiles are actually wired
+## 2. How the dotfiles are wired
 
 **Everything is symlinked.** There are no copies and nothing to re-sync — every live config
 file is a symlink pointing straight into `~/Dotfiles`. Edit the repo and the running system
@@ -64,25 +60,35 @@ sees the change.
 ~/Dotfiles/
 ├── zsh/.zshrc                 -> ~/.zshrc                        SYMLINK
 ├── zsh/.p10k.zsh              -> ~/.p10k.zsh                     SYMLINK
+├── zsh/.zshenv                -> ~/.zshenv                       SYMLINK
 ├── niri/.config/niri/         -> ~/.config/niri/                 SYMLINK
-│     ├── config.kdl           -> ~/.config/niri/config.kdl       SYMLINK
-│     ├── config/              -> ~/.config/niri/config/          SYMLINK
-│     └── animations/          -> ~/.config/niri/animations/      SYMLINK
 ├── nvim/.config/nvim/         -> ~/.config/nvim/                 SYMLINK
-│     ├── init.lua             -> ~/.config/nvim/init.lua         SYMLINK
-│     └── lazy-lock.json       -> ~/.config/nvim/lazy-lock.json   SYMLINK
 ├── kitty/.config/kitty/       -> ~/.config/kitty/                SYMLINK
-│     ├── kitty.conf           -> ~/.config/kitty/kitty.conf      SYMLINK
-│     └── colors.conf          -> ~/.config/kitty/colors.conf     SYMLINK (matugen)
-└── yazi/.config/yazi/         -> ~/.config/yazi/                 SYMLINK
-      ├── yazi.toml            -> ~/.config/yazi/yazi.toml        SYMLINK
-      ├── init.lua             -> ~/.config/yazi/init.lua         SYMLINK
-      ├── package.toml         -> ~/.config/yazi/package.toml     SYMLINK
-      └── plugins/             -> ~/.config/yazi/plugins/         SYMLINK
+├── yazi/.config/yazi/         -> ~/.config/yazi/                 SYMLINK
+├── gtk/.gtkrc-2.0             -> ~/.gtkrc-2.0                    SYMLINK
+├── gtk/.config/gtk-3.0/       -> ~/.config/gtk-3.0/              SYMLINK
+├── gtk/.config/gtk-4.0/       -> ~/.config/gtk-4.0/              SYMLINK
+├── qt/.config/qt5ct/          -> ~/.config/qt5ct/                SYMLINK
+├── qt/.config/qt6ct/          -> ~/.config/qt6ct/                SYMLINK
+├── xsettingsd/.config/        -> ~/.config/xsettingsd/           SYMLINK
+├── easyeffects/.config/       -> ~/.config/easyeffects/          SYMLINK
+├── mpv/.config/mpv/           -> ~/.config/mpv/                  SYMLINK
+├── cava/.config/cava/         -> ~/.config/cava/                 SYMLINK
+├── fastfetch/.config/         -> ~/.config/fastfetch/            SYMLINK
+├── spicetify/.config/         -> ~/.config/spicetify/            SYMLINK
+├── mangohud/.config/          -> ~/.config/MangoHud/             SYMLINK
+├── lsp-plugins/.config/       -> ~/.config/lsp-plugins/          SYMLINK
+├── nwg-look/.config/          -> ~/.config/nwg-look/             SYMLINK
+├── gallery-dl/.config/        -> ~/.config/gallery-dl/           SYMLINK
+├── portal/.config/            -> ~/.config/xdg-desktop-portal/   SYMLINK
+├── systemd/.config/           -> ~/.config/systemd/              SYMLINK
+├── environment.d/.config/     -> ~/.config/environment.d/        SYMLINK
+├── mimeapps/.config/          -> ~/.config/mimeapps.list         SYMLINK
+├── user-dirs/.config/         -> ~/.config/user-dirs.dirs        SYMLINK
+├── spotify/.config/           -> ~/.config/spotify-flags.conf    SYMLINK
+├── bin/.local/bin/            -> ~/.local/bin/                   SYMLINK
+└── applications/.local/       -> ~/.local/share/applications/    SYMLINK
 ```
-
-Verified 2026-09-26: all 13 symlinks resolve, none are broken, and `~/.config/{niri,nvim,
-kitty,yazi}` contain nothing but symlinks — no stray local files.
 
 **Consequence:** there is no `rsync` step. Edit `~/Dotfiles/niri/.config/niri/config.kdl` and
 niri has already read the new bytes by the time you save.
@@ -105,15 +111,6 @@ niri validate                    # niri config  -> "config is valid"
 nvim --headless -c 'qa'          # nvim config (will surface Lua errors)
 ```
 
-### The one real consequence of symlinking: generated files
-
-`kitty/colors.conf` and `niri/config/colors.kdl` are **generated by matugen** and carry
-"do not edit" headers. Because they are symlinks, every theme change rewrites the file
-*inside the git repo*, so `git status` will show them as modified after switching themes.
-That is expected. Either commit the churn or gitignore them — but do not "fix" it by
-replacing the symlink with a copy, because that reintroduces the drift this layout exists
-to prevent.
-
 ---
 
 ## 3. Niri — Wayland compositor
@@ -124,11 +121,10 @@ Config root: `~/.config/niri/config.kdl`, which is only an `include` manifest:
 include "config/env.kdl"          // XDG vars, xwayland-satellite
 include "config/input.kdl"        // keyboard layout, touchpad
 include "config/output.kdl"       // monitor DP-2
-include "config/layout.kdl"       // gaps, borders, ~30 window rules (blur/float)
-include "config/colors.kdl"       // AUTO-GENERATED by matugen — do not edit
-include "config/autostart.kdl"    // cliphist, easyeffects, serpantinumd
+include "config/layout.kdl"       // gaps, borders
+include "config/autostart.kdl"    // cliphist, easyeffects, xwayland-satellite
 include "config/keybinds.kdl"     // all your bindings
-include "animations/glide.kdl"    // window open/close/resize shaders
+include "config/window-rules.kdl" // floating rules, corner radius
 ```
 
 ### 3.1 Core concepts
@@ -141,20 +137,20 @@ desktop is one continuous strip. `Mod+Left`/`Mod+Right` move between columns;
 `Mod` = **Super** on a TTY, **Alt** when niri runs as a window. You are on a TTY, so it is
 the Windows/Super key.
 
-### 3.2 Your keybindings
+### 3.2 Keybindings
 
 #### Launching things
 
 | Binding | Action |
 |---|---|
 | `Mod+Return` | Kitty (terminal) |
-| `Mod+B` | Firefox |
+| `Mod+B` | LibreWolf |
 | `Mod+F` | Kitty running `Yazi` |
 | `Mod+O` | Kitty running `opencode` |
-| `Mod+Space` | Serpantinum launcher |
-| `Mod+Shift+/` | Niri hotkey overlay (suppressed at startup) |
+| `Mod+Q` | GNOME Calculator |
+| `Ctrl+Shift+Escape` | Toggle htop floating window |
 
-#### Windows and columns
+#### Window management
 
 | Binding | Action |
 |---|---|
@@ -163,70 +159,24 @@ the Windows/Super key.
 | `Mod+Shift+F` | Fullscreen |
 | `Mod+T` | Maximize column |
 | `Mod+X` | Cycle preset column width (1/3 → 1/2 → 2/3) |
-| `Mod+Backspace` | Toggle overview (zoomed-out workspace view) |
+| `Mod+Backspace` | Toggle overview |
 | `Mod+Left` / `Mod+Right` | Focus column left / right |
-| `Mod+Up` / `Mod+Down` | Focus window up / down (crosses into next workspace) |
-| `Mod+Shift+Left` / `Right` | **Move** focused column left / right |
-| `Mod+Shift+Up` / `Down` | **Move** column to workspace up / down |
+| `Mod+Up` / `Mod+Down` | Focus window up / down |
+| `Mod+Shift+Left` / `Right` | Move column left / right |
+| `Mod+Shift+Up` / `Down` | Move column to workspace up / down |
 | `Mod+Ctrl+Left` / `Right` | Resize column −5% / +5% |
 | `Mod+Ctrl+Up` / `Down` | Resize window height −5% / +5% |
 
-#### Workspaces
+#### Media keys
 
 | Binding | Action |
 |---|---|
-| `Mod+1` … `Mod+9`, `Mod+0` | Go to workspace 1–10 |
-| `Mod+Shift+1` … `Mod+Shift+0` | Move focused column to workspace 1–10 |
-
-> Workspaces are **dynamic** — they only exist once something is on them. `Mod+1` on an
-> empty slot jumps to the bottommost empty workspace. The bar shows 8 of them
-> (`bar.workspaceCount`); `Mod+9`/`Mod+0` reach workspaces 9 and 10 regardless.
-
-> These workspace routes go through Serpantinum, not niri directly. If the shell is not
-> running, `Mod+1` will do nothing. The pure-niri equivalents are
-> `focus-workspace <n>` / `move-column-to-workspace <n>`.
-
-#### Screen, session, power
-
-| Binding | Action |
-|---|---|
-| `Mod+L` or `XF86PowerOff` | Lock screen (Serpantinum) |
-| `Mod+R` | Reload Serpantinum (bar, launcher, popouts) |
-| `Print` | Screenshot |
-| `Shift+Print` | Screenshot → open in editor |
-| `Super+Print` | Fullscreen screenshot |
-| `Super+Shift+Print` | Fullscreen screenshot → open in editor |
-
-> **You have no quit binding.** niri's defaults put `quit` on `Mod+Shift+E` and
-> `Ctrl+Alt+Delete`, but your `binds {}` replaces the defaults entirely (see below), so
-> neither is active. To log out, run `niri msg action quit` — it still shows the
-> confirmation dialog. Consider adding a binding.
-
-#### Media and brightness (routed through Serpantinum)
-
-| Binding | Action |
-|---|---|
-| `XF86Audio+Play` / `+Pause` | Play / pause |
-| `XF86Audio+Prev` / `+Next` | Previous / next track |
-| `XF86Audio+Mute` | Toggle mute |
-| `XF86Audio+Mic+Mute` | Toggle microphone mute |
-| `XF86Audio+Lower` / `+Raise` | Volume down / up |
-| `XF86MonBrightness+Up` / `+Down` | Brightness up / down |
-
-#### Serpantinum popouts
-
-| Binding | Popout |
-|---|---|
-| `Mod+Space` | App launcher |
-| `Mod+P` | Clipboard history |
-| `Mod+M` | Music |
-| `Mod+S` | System monitor |
-| `Mod+Shift+B` | Wallpaper |
-| `Mod+C` | Calendar |
-| `Mod+N` | Network |
-| `Mod+Shift+V` | Volume |
-| `Mod+H` | Guide / settings |
-| `Mod+A` | Toggle bar autohide |
+| `XF86AudioPlay` / `Pause` | Play / pause (playerctl) |
+| `XF86AudioPrev` / `Next` | Previous / next track |
+| `XF86AudioMute` | Toggle mute |
+| `XF86AudioMicMute` | Toggle mic mute |
+| `XF86AudioLower` / `Raise` | Volume down / up |
+| `XF86MonBrightnessUp` / `Down` | Brightness up / down |
 
 ### 3.3 Niri's default keybindings are NOT active
 
@@ -237,83 +187,38 @@ This trips people up, so it is worth stating plainly. From the niri documentatio
 
 Your `binds {}` in `config/keybinds.kdl` is the **complete and only** set of bindings. There
 is no default layer underneath it. Every niri default keybinding you did not explicitly
-redeclare simply does not exist on this system. (Other config sections *do* fall back to
-defaults — only `binds` is the exception.)
+redeclare simply does not exist on this system.
 
-The table below is therefore not "what you overrode" but "what you gave up" — handy when you
-want a binding back.
+> **You have no quit binding.** niri's defaults put `quit` on `Mod+Shift+E` and
+> `Ctrl+Alt+Delete`, but your `binds {}` replaces the defaults entirely. To log out, run
+> `niri msg action quit`. Consider adding a binding.
 
-| Key | niri's default (now inactive) | Your binding |
-|---|---|---|
-| `Mod+F` | maximize-column | open Yazi |
-| `Mod+W` | toggle-column-tabbed-display | close window |
-| `Mod+O` | toggle-overview | open `opencode` |
-| `Mod+L` | focus-column-right | lock screen |
-| `Mod+H` | focus-column-left | Serpantinum guide |
-| `Mod+M` | maximize-window-to-edges | music popout |
-| `Mod+C` | center-column | calendar popout |
-| `Mod+R` | switch-preset-column-width | reload Serpantinum |
-| `Mod+Shift+V` | switch focus floating↔tiling | volume popout |
-| `Mod+Shift+←/→` | focus-monitor-left/right | move column left/right |
-| `Mod+Shift+↑/↓` | focus-monitor-up/down | move column to workspace |
-| `Mod+Ctrl+←/→` | move-column-left/right | resize column ±5% |
-| `Mod+Ctrl+↑/↓` | move-window-up/down | resize window height ±5% |
-| `Mod+1`–`Mod+9` | focus-workspace N | Serpantinum workspace N |
-| `Mod+Ctrl+1`–`9` | move-column-to-workspace N | *(now free)* |
-| `Mod+Page+Up`/`Down` | previous / next workspace | *(now free)* |
-| `Mod+Shift+Page+Up`/`Down` | move-workspace-up/down | *(now free)* |
-| `Mod+Wheel+Scroll+Up`/`Down` | scroll through workspaces | *(now free)* |
-| `Mod+Shift+R` | preset column width, backwards | *(now free)* |
-| `Mod+Escape` | toggle shortcut inhibitor | *(now free)* |
-| `Mod+Shift+E`, `Ctrl+Alt+Delete` | quit niri | *(now free)* |
-| `Mod+Shift+P` | power off monitors | *(now free)* |
-| `Ctrl+Print` / `Alt+Print` | screenshot screen / window | *(now free)* |
+### 3.4 Visual configuration
 
-### 3.4 Defaults you probably want back
+**Layout** (`config/layout.kdl`): 5px gaps, borders off, focus ring off, `prefer-no-csd`.
+Window rules set 10px corner radius with `clip-to-geometry`, and match `mpv`, `imv`,
+`gnome-calculator`, and `nautilus` as floating.
 
-None of these are currently bound. Copy any you want into
-`~/Dotfiles/niri/.config/niri/config/keybinds.kdl` — it is symlinked, so niri picks the
-change up on save (see [section 2](#2-how-the-dotfiles-are-actually-wired)).
-
-| Suggested key | Action to add |
-|---|---|
-| `Mod+Shift+E` | `quit` — **strongly recommended**, there is no quit binding now |
-| `Mod+Escape` | `toggle-keyboard-shortcuts-inhibit` — escape hatch if an app grabs keys |
-| `Mod+Ctrl+1` … `Mod+Ctrl+9` | `move-column-to-workspace <n>` — complements your `Mod+Shift+<n>` |
-| `Mod+Page+Up` / `Page+Down` | `focus-workspace-up` / `focus-workspace-down` |
-| `Mod+Shift+Page+Up` / `Down` | `move-workspace-up` / `move-workspace-down` |
-| `Mod+Wheel+Scroll+Up` / `Down` | `focus-workspace-up` / `focus-workspace-down` (add `cooldown-ms=150`) |
-| `Mod+BracketLeft` / `BracketRight` | `consume-or-expel-window-left` / `-right` |
-| `Mod+,` / `Mod+.` | `consume-window-into-column` / `expel-window-from-column` |
-| `Mod+Shift+R` | `switch-preset-column-width-back` |
-| `Mod+Ctrl+Shift+R` | `switch-preset-window-height` |
-| `Mod+Ctrl+R` | `reset-window-height` |
-| `Mod+Ctrl+F` | `expand-column-to-available-width` |
-| `Mod+Ctrl+C` | `center-visible-columns` |
-| `Mod+-` / `Mod+=` | `set-column-width "-10%"` / `"+10%"` |
-| `Mod+Shift+-` / `Mod+Shift+=` | `set-window-height "-10%"` / `"+10%"` |
-| `Mod+Home` / `Mod+End` | `focus-column-first` / `focus-column-last` |
-| `Mod+Ctrl+Home` / `Mod+Ctrl+End` | `move-column-to-first` / `move-column-to-last` |
-| `Mod+Ctrl+Shift+←/→/↑/↓` | `move-column-to-monitor-*` — **needed before you add a second monitor** |
-| `XF86AudioStop` | `spawn-sh "playerctl stop"` |
-| `Ctrl+Print` / `Alt+Print` | `screenshot-screen` / `screenshot-window` |
-
-`niri msg action --help` lists every action name you can use on the left-hand side.
-
-### 3.5 Visual configuration
-
-**Layout** (`config/layout.kdl`): 10px gaps, 4px borders
-does the work), `prefer-no-csd`, 10px corner radius with `clip-to-geometry`. Inactive
-windows drop to 0.95 opacity.
-
-### 3.6 Autostart
+### 3.5 Autostart
 
 ```bash
 wl-paste --type text  --watch cliphist store   # clipboard text
 wl-paste --type image --watch cliphist store   # clipboard images
 systemctl --user enable --now easyeffects       # audio effects
-serpantinumd start                             # the desktop shell
+xwayland-satellite                              # XWayland for X11 apps
 ```
+
+### 3.6 Environment
+
+`config/env.kdl` sets:
+- `NIXOS_OZONE_WL=1` — Wayland for Electron apps
+- `XDG_CURRENT_DESKTOP=Niri`, `XDG_SESSION_TYPE=wayland`, `XDG_SESSION_DESKTOP=Niri`
+- `QT_QPA_PLATFORMTHEME=qt6ct` — Qt theme via qt6ct
+- `QS_ICON_THEME=Papirus-Dark`
+- `xwayland-satellite` path
+
+`~/.config/environment.d/electron-wayland.conf` sets `ELECTRON_OZONE_PLATFORM_HINT=wayland`
+for Electron apps system-wide.
 
 ### 3.7 CLI
 
@@ -322,83 +227,32 @@ niri msg outputs                  # monitors and modes
 niri msg workspaces               # workspace contents
 niri msg windows                  # all windows
 niri msg action focus-column-right
-niri msg action close-window
 niri msg action load-config-file  # hot-reload config.kdl
-niri msg action screenshot-screen
-niri msg action switch-preset-column-width
 niri validate                     # check config, non-destructively
 ```
 
-`niri msg action --help` lists every available action. Note there is **no** `pick-window`
-action in niri 26.04 — use `Mod+Backspace` for the overview instead.
-
 ---
 
-## 4. Serpantinum — desktop shell
-
-Serpantinum is a Quickshell/QML desktop shell. It owns the bar, the app launcher, and every
-popout. Installed at `~/.local/share/serpantinum/src/`, configured at
-`~/.config/serpantinum/settings.json`.
-
-Because the bar and all popouts are part of one process, **`Mod+R` reloads all of them at
-once** and they are always mutually consistent.
-
-### 4.1 What it provides
-
-| Component | Notes |
-|---|---|
-| Bar | Left-positioned, 100px, `fill` style, 8 workspaces, material clock |
-| App launcher | `Mod+Space` — 600px wide, top position, 6 items, terminal `kitty -e`, smart ranking |
-| Clipboard | `Mod+P` — backed by cliphist |
-| Music / Volume / Network / System / Calendar / Wallpaper / Guide | the remaining popouts |
-| Screenshots | `Print` and friends |
-| Lock, brightness, blue-light filter, weather, location | via the CLI |
-
-### 4.2 CLI
-
-```bash
-serpantinum --help
-serpantinum -V                        # version
-
-serpantinum launch <target> [args]    # targets: start, widgetredactor
-serpantinum msg workspace <n> [move]
-serpantinum msg open <target> [sub]   # e.g. open network wifi
-serpantinum msg toggle <target>       # launcher, clipboard, music, ...
-serpantinum msg close
-serpantinum ipc ...                   # raw IPC to Shell.qml
-serpantinum kill                      # stop the whole shell
-
-# script subcommands
-serpantinum exit | lock | reload | volume | brightness | screenshot
-serpantinum weather | location | location_manual | monitors_detect
-serpantinum current_focus | blue_light_filter
-
-# daemon control
-serpantinumd start | stop | status
-```
-
-`serpantinum msg toggle <target>` is the general escape hatch — anything with a keybind can
-be triggered from a script or a custom binding. Run `serpantinum msg toggle` with no
-argument to see valid targets.
-
----
-
-## 5. Zsh + Powerlevel10k + zoxide
+## 4. Zsh + Powerlevel10k + zoxide
 
 `.zshrc` is a symlink to `~/Dotfiles/zsh/.zshrc` — edit it directly and `source ~/.zshrc`.
 
-### 5.1 Load order
+### 4.1 Load order
 
-1. Powerlevel10k **instant prompt** (must be first — it repaints fast)
-2. CachyOS oh-my-zsh config from `/usr/share/cachyos-zsh-config/cachyos-config.zsh`
-   (plugins: `git fzf extract`)
-3. `zoxide init zsh`
-4. eza / bat aliases
-5. the `emoji` function
-6. `~/.p10k.zsh` (symlinked from the repo)
-7. `PATH` additions
+1. `fastfetch` (system info on shell start)
+2. Powerlevel10k **instant prompt** (must be first — it repaints fast)
+3. CachyOS oh-my-zsh config from `/usr/share/cachyos-zsh-config/cachyos-config.zsh`
+4. `dircolors` for directory colors
+5. `compinit` + completion styling
+6. fzf key-bindings and completion
+7. `zoxide init zsh`
+8. eza / bat aliases
+9. History configuration
+10. `zsh-autosuggestions` + `zsh-syntax-highlighting` (cloned to `~/.zsh/`)
+11. `~/.p10k.zsh` (symlinked from the repo)
+12. PATH additions
 
-### 5.2 zoxide
+### 4.2 zoxide
 
 zoxide learns the directories you actually visit and ranks them by frequency.
 
@@ -411,18 +265,7 @@ z -               # jump to previous directory
 z <TAB>           # complete a partial name
 ```
 
-Inspect and manage the database:
-
-```bash
-z foo --list      # show ranked matches
-z foo --delete    # remove an entry
-z --clean         # purge entries whose directories no longer exist
-```
-
-> Run `z --clean` after deleting a bunch of project directories. Otherwise `z proj` can
-> still resolve to paths that are gone.
-
-### 5.3 Aliases
+### 4.3 Aliases
 
 ```bash
 ls    # eza --color=auto --group-directories-first
@@ -432,21 +275,23 @@ l     # la + tree, 2 levels deep
 cat   # bat --paging=never --style=plain
 ```
 
-`ll` and `la` include a Git column, so they are the ones to use inside repos.
-
-Note that `cat` is aliased to `bat` with paging disabled — so `cat file | something` works
-as expected. If you want `bat`'s pager, call `bat` directly.
-
-### 5.4 The `emoji` function
+### 4.4 History
 
 ```bash
-emoji
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt EXTENDED_HISTORY SHARE_HISTORY INC_APPEND_HISTORY
+setopt HIST_IGNORE_DUPS HIST_IGNORE_SPACE HIST_FIND_NO_DUPS HIST_REDUCE_BLANKS
 ```
 
-Opens an fzf picker of ~200 emoji, filtered as you type, and copies the selection to the
-clipboard with `wl-copy`. Handy for commit messages and chat.
+### 4.5 Custom functions
 
-### 5.5 Prompt
+- `q()` — one-shot opencode task via the `quick` agent
+- `stc()` — SillyTavern context handoff: summarize the latest chat for a character into a
+  pasteable prompt
+
+### 4.6 Prompt
 
 Powerlevel10k, `nerdfont-complete` mode, with the instant prompt enabled. To reconfigure
 interactively:
@@ -462,27 +307,20 @@ The generated file is `~/.p10k.zsh`, which is a symlink into the repo — so run
 cp ~/.p10k.zsh ~/Dotfiles/zsh/.p10k.zsh
 ```
 
-### 5.6 History
-
-From the CachyOS config:
-
-- `HISTCONTROL=ignoreboth` — consecutive duplicates and commands starting with a space are
-  not recorded. **Prefixing a command with a space hides it from history.**
-- `HISTORY_IGNORE` skips `&`, `bg`, `fg`, `c`, `clear`, `history`, `exit`, `q`, `pwd`, and
-  anything ending in `--help`.
-
-### 5.7 PATH
+### 4.7 PATH
 
 ```bash
-export PATH=$PATH:/home/delta/.spicetify:/home/delta/.local/bin
+export PATH=/home/delta/.opencode/bin:$PATH
+export PATH=$PATH:/home/delta/.spicetify
+export PATH="/home/delta/.local/bin:$PATH"
 ```
 
-`~/.local/bin` is where `serpantinum`, `serpantinumd`, and `opencode` live — this line is
-what makes the compositor keybinds work.
+`~/.local/bin` is where the custom scripts live (`rgb-off`, `toggle-gtop`, `sillytavern`,
+`gallery-dl-*`, `gdltui`).
 
 ---
 
-## 6. Neovim
+## 5. Neovim
 
 Config: `~/.config/nvim/init.lua`, which is a **symlink** to
 `~/Dotfiles/nvim/.config/nvim/init.lua` — edit the repo file and nvim sees it.
@@ -491,7 +329,7 @@ This is a **hand-rolled minimal config**, not LazyVim. There is no telescope, no
 fzf-native, no gitsigns, no which-key, no noice. The file is self-contained, which makes it
 easy to read end to end.
 
-### 6.1 Essentials
+### 5.1 Essentials
 
 **Leader is `<Space>`.**
 
@@ -502,7 +340,7 @@ easy to read end to end.
 | `<Space>w` | Toggle soft-wrap (sticks across window splits) |
 | `-` | Open the parent directory in Oil |
 
-### 6.2 Commands
+### 5.2 Commands
 
 | Command | Action |
 |---|---|
@@ -514,7 +352,7 @@ easy to read end to end.
 | `:TSUpdate` | Update Tree-sitter parsers |
 | `:checkhealth` | Built-in diagnostics |
 
-### 6.3 Editor options
+### 5.3 Editor options
 
 | Option | Value |
 |---|---|
@@ -528,19 +366,17 @@ easy to read end to end.
 | `termguicolors` | on |
 | `updatetime` | 250 ms |
 | `completeopt` | `menu,menuone,noselect` |
-| `syntax` | enabled |
 
-### 6.4 No colourscheme — this is intentional
+### 5.4 No colourscheme — this is intentional
 
 There is no `colorscheme` call. Instead these groups are forced to `bg = "none"`:
 
 `Normal`, `NormalNC`, `NormalFloat`, `FloatBorder`, `SignColumn`, `EndOfBuffer`
 
 The effect: Neovim inherits kitty's palette exactly, so the terminal and the editor are
-one continuous colour scheme. If you add a colourscheme later, remove this block or it
-will fight your choice.
+one continuous colour scheme.
 
-### 6.5 Diagnostics
+### 5.5 Diagnostics
 
 ```lua
 float = { border = "rounded", source = "always" }
@@ -550,27 +386,25 @@ update_in_insert = false     -- don't re-lint while you type
 severity_sort = true         -- errors float above warnings
 ```
 
-### 6.6 Plugins
+### 5.6 Plugins
 
 | Plugin | Role |
 |---|---|
 | `lazy.nvim` | Plugin manager, pinned by `lazy-lock.json` |
-| `alpha-nvim` | Dashboard with an ASCII **SERPENTINUM** banner |
+| `alpha-nvim` | Dashboard |
 | `lualine.nvim` | Status line |
 | `nvim-cmp` | Completion engine |
 | `cmp-nvim-lsp` | LSP completion source |
 | `cmp-buffer` | Words from the current buffer |
 | `cmp-path` | Filesystem paths |
 | `nvim-autopairs` | Bracket/quote auto-pairing |
-| `oil.nvim` | File explorer (directory as a file listing) |
-| `nvim-treesitter` | Syntax parsing / incremental selection |
+| `oil.nvim` | File explorer |
+| `nvim-treesitter` | Syntax parsing |
 | `mason.nvim` | LSP server installer |
-| `nvim-web-devicons` | File-type icons (used by Oil and lualine) |
+| `nvim-web-devicons` | File-type icons |
+| `markview.nvim` | Markdown rendering |
 
-`lazy.nvim` is cloned automatically on first run. `checker` (update notifications) is
-disabled and `change_detection` notifications are off.
-
-### 6.7 Completion (nvim-cmp)
+### 5.7 Completion (nvim-cmp)
 
 | Key | Action |
 |---|---|
@@ -581,33 +415,23 @@ disabled and `change_detection` notifications are off.
 | `<Tab>` / `<S-Tab>` | Cycle items |
 | `<C-c>` | Abort |
 
-Sources, in priority order: `nvim_lsp`, `path`, `buffer`. Both the completion and
-documentation windows use a rounded border.
+Sources: `nvim_lsp`, `path`, `buffer`.
 
-`nvim-autopairs` is wired into cmp so that accepting a completion does not leave a stray
-closing bracket.
-
-### 6.8 Status line (lualine)
+### 5.8 Status line (lualine)
 
 ```
 mode │ branch │ filename ● │                    diagnostics │ filetype │ location
 ```
 
 - Mode is abbreviated to a single character (`N`, `I`, `V`, …)
-- Filename shows the path relative to the cwd, `●` when modified, `` when read-only
 - `globalstatus` is on, so one status line spans every window
-- Inactive windows drop the filename path and the location/diagnostic sections
 
-### 6.9 Oil — the file explorer
+### 5.9 Oil — the file explorer
 
 Bound to `<Space>e` (via `:Cd`) and `-` for the parent directory. Hidden files are shown.
-`q` closes it. Navigation is Oil's own default vim-ish keymap (`h`/`j`/`k`/`l`, `Enter`
-to open, `a` to create, `d` to delete, `r`/`c` to rename/copy, `y`/`p` for
-yank/paste, `Space` to select).
+`q` closes it.
 
-Because `q` closes Oil, `q` is not available for "quit" while the explorer is open.
-
-### 6.10 C/C++ workflow
+### 5.10 C/C++ workflow
 
 `<Space>r` is the one genuinely custom piece:
 
@@ -616,13 +440,9 @@ Because `q` closes Oil, `q` is not available for "quit" while the explorer is op
    - **C++** → `g++ -Wall -Wextra -std=c++23 -O2 -o <basename> <file>`
    - **C** → `gcc -Wall -Wextra -std=c17 -O2 -o <basename> <file>`
 3. **On success:** opens a `botright split`, resized to 12 lines, running the binary
-4. **On failure:** fills the quickfix list with the compiler output and `:copen`s it, so
-   you get jumpable errors (`:cnext` / `:cprev` to step through)
+4. **On failure:** fills the quickfix list with the compiler output and `:copen`s it
 
-The output binary is written next to the source with the extension stripped — for
-`main.cpp` that is `./main`. Clean up with `rm ./main` or add a `.gitignore` entry.
-
-### 6.11 Language server
+### 5.11 Language server
 
 Only **clangd** is configured, using Neovim's native `vim.lsp` API (no nvim-lspconfig):
 
@@ -631,21 +451,7 @@ clangd --background-index --clang-tidy --completion-style=detailed
        --header-insertion=iwyu --suggest-missing-includes -j=4
 ```
 
-- `--background-index` indexes the project in the background for accurate results
-- `--header-insertion=iwyu` inserts includes per Include-What-You-Use
-- `--suggest-missing-includes` offers includes for symbols you have not included
-- `-j=4` limits parallelism to 4 jobs
-
-**To add another language**, do it manually — there is no lspconfig to do it for you:
-
-```lua
-vim.lsp.config("pyright", { settings = { python = { analysis = { typeCheckingMode = "basic" } } } })
-vim.lsp.enable("pyright")
-```
-
-Restart Neovim afterwards. Then `:Mason` to install the server binary.
-
-### 6.12 Tree-sitter
+### 5.12 Tree-sitter
 
 Configured with `lazy = false` and `build = ":TSUpdate"`, and a `FileType` autocmd that
 calls `vim.treesitter.start()` per buffer.
@@ -653,242 +459,273 @@ calls `vim.treesitter.start()` per buffer.
 Intended parsers: `bash c cpp css dockerfile go html java javascript json lua markdown
 python rust sql toml typescript vim vimdoc xml yaml`.
 
-> **These will not install.** The `treesitter.install({...})` call is guarded by
-> `vim.fn.executable("tree-sitter") == 1`, and the `tree-sitter` CLI is not on this system.
-> Parsing still works for anything Neovim bundles, but to get the full list you need
-> `sudo pacman -S tree-sitter`, then `:TSUpdate` (or restart).
+> These require the `tree-sitter` CLI (`tree-sitter-cli` package). The installer handles it.
 
-Neovim bundles these seven parsers, and they work with no CLI installed:
-`c`, `lua`, `vim`, `vimdoc`, `query`, `markdown`, `markdown_inline`. The last two are why
-markdown rendering works out of the box — see below.
-
-### 6.13 Reading markdown (markview)
+### 5.13 Reading markdown (markview)
 
 `OXY2DEV/markview.nvim`, loaded on `ft = { "markdown", "rmd", "quarto" }`. It renders the
-markup in place so notes read as prose: heading icons, hidden `**`/`*`/`~~` markers,
-`[text](url)` collapsed to just the text behind a link icon, box-drawn tables, task-list
-checkboxes as nerd-font glyphs, bordered blockquotes, footnotes, and syntax-highlighted
-code blocks.
+markup in place so notes read as prose.
 
-**It works without the `tree-sitter` CLI.** markview only needs the `markdown` and
-`markdown_inline` parsers, and Neovim bundles both. Nothing needs installing beyond
-`:Lazy sync` for the plugin itself.
-
-Three non-obvious things in `init.lua` that this depends on:
-
-1. **`vim.cmd.syntax("enable")` runs *after* `require("lazy").setup(...)`.** `:syntax enable`
-   forces filetype detection for the file named on the command line, so it emits `FileType`
-   right there. If that happens before lazy.nvim has registered its `ft` handlers,
-   markview never loads the normal way — and lazy's post-setup rescan of already-open
-   buffers does *not* source the plugin's `plugin/` files, so `plugin/markview.lua` never
-   runs, its autocommands are never registered, and the buffer silently stays unrendered.
-
-2. **The prose `FileType` autocmd is registered near the top of the file, before
-   `syntax enable`**, for the same ordering reason. It also must not assume a window
-   exists: that first `FileType` fires before the window is created, so `vim.wo[buf]` raises
-   `Invalid window id`. Buffer-local options are set directly; window-local ones go
-   through `vim.schedule`. This matters more than it looks — an error thrown inside a
-   `FileType` callback **aborts the rest of the FileType chain**, which is what loads
-   every filetype-scoped plugin.
-
-   Watch the option scopes. `wrap`, `linebreak`, `breakindent`, `colorcolumn`, `spell` and
-   `conceallevel` are window-local; `textwidth`, `wrapmargin` and `spelllang` are
-   buffer-local. Setting one through the wrong handle raises
-   `'win' cannot be passed for buffer-local option` and leaves the rest of the block unset.
-
-3. **markview's highlight groups are defined explicitly.** markview derives its palette by
-   sampling the current colourscheme, and this config deliberately loads none — so all 78
-   of its `Markview*` groups are left undefined and the output renders monochrome. Its
-   `highlight_groups` option looks like the fix but is a dead key: nothing in the plugin
-   reads it. The working approach is to pass the links to
-   `require("markview.highlights").setup({...})` directly, pointing each group at one of
-   Neovim's builtin groups (`Title`, `Comment`, `Constant`, `Visual`, `Underlined`,
-   `Special`, …), which are always defined and resolve against the terminal palette —
-   consistent with the no-colorscheme rule in [6.4](#64-no-colourscheme--this-is-intentional).
-
-Two option values worth knowing: `max_buf_lines` defaults to **1000** and markview silently
-stops drawing past it, so it is raised to 20000 — this very guide is over 900 lines.
-And `code_blocks.style` is a function that returns `"simple"` (no box) when `wrap` is on and
-`"block"` (full box) when it is off, so code blocks change shape if you toggle
-[`<Space>w`](#61-essentials).
-
-`<Space>w` toggles soft-wrap and records the choice in `b:prose_wrap_manual`, so opening
-the file in a new split does not silently undo it.
-
-### 6.14 Ordering rules that bite in this config
-
-Two ordering constraints are load-bearing and easy to break by appending code at the end of
-`init.lua`:
-
-- Anything registering a `FileType` autocmd meant to affect the startup buffer must go
-  **above** `vim.cmd.syntax("enable")`.
-- `vim.cmd.syntax("enable")` must stay **below** `require("lazy").setup({...})`.
-
-See [6.13](#613-reading-markdown-markview) for the failure this prevents.
+`<Space>w` toggles soft-wrap and records the choice in `b:prose_wrap_manual`.
 
 ---
 
-## 7. Kitty
+## 6. Kitty
 
 Config: `~/.config/kitty/kitty.conf`.
 
 | Setting | Value |
 |---|---|
-| Font | Maple Mono NF Bold, 16.0 |
-| Bold / italic / bold-italic | `auto` (synthesised if the family lacks them) |
-| Background opacity | 0.75 |
-| Background blur | radius 40 — matches the niri blur so it reads as one surface |
+| Font | JetBrains Mono, 16.0 |
+| Symbol map | U+EFC5 → Iosevka Nerd Font |
+| Bold / italic / bold-italic | `auto` |
+| Cursor trail | 25ms threshold, 0.08/0.35s decay, color `none` (inherits cursor colour) |
+| Custom shaders | `theme-lightning` (in `shaders/`) |
+| Background opacity | 1.0 |
 | Window padding | 4 |
 | Scrollback | 2000 lines |
 | Decorations | hidden |
-| Cursor trail | 1 |
 | Close confirmation | disabled |
 | Audio bell | disabled |
-| Shell integration | enabled |
-| `Ctrl+Shift+E` | Open URL under cursor with hints |
 
-`url_prefixes` covers `https://`, `http://`, `ftp://` and opens with `xdg-open`, so links
-in terminal output are clickable.
+### 6.1 Cursor trail shader
 
-Terminal shortcuts worth knowing (kitty defaults): `Ctrl+Shift+T` new tab,
-`Ctrl+Shift+W` close tab, `Ctrl+Shift+C/V` copy/paste, `Ctrl+Shift+K` clear, `Ctrl+Shift+D`
-split pane, `Ctrl+Shift+Enter/K` resize, `Ctrl+Shift+F` fullscreen, `Alt+Shift+Left/Right`
-move pane.
+`shaders/theme-lightning.slang` + `.pipeline` — kitty's stock lightning shader, with the
+hardcoded orange/red swapped for the live theme colour, so the bolt always matches the
+palette.
 
-### 7.1 Colours are generated
+### 6.2 Colours
 
-`kitty.conf` ends with `include ~/.config/kitty/colors.conf`, and that file is
-**written by matugen** from the Serpantinum theme. Do not hand-edit it — change the theme
-in Serpantinum (`Mod+H` → Guide) or your wallpaper, and it regenerates. See
-[Gotchas](#10-gotchas-and-traps).
+`kitty.conf` ends with `include ~/.config/kitty/colors.conf`. The colours are currently a
+warm dark palette (matugen-generated from the wallpaper). The file is a static snapshot —
+edit it to change colours, or regenerate with matugen.
 
 ---
 
-## 8. Yazi
+## 7. Yazi
 
 Config: `~/.config/yazi/yazi.toml`. Launch with `Mod+F` (inside Kitty).
 
-### 8.1 Settings
+### 7.1 Settings
 
 - Hidden files shown
 - Natural sort order (so `file2` precedes `file10`)
 - Directories listed first
 
-### 8.2 Openers
+### 7.2 Openers
 
 | Type | Opener |
 |---|---|
 | Text | `nvim` (blocking) |
-| Images | `imv` (orphaned — Yazi stays usable) |
+| Images | `imv` (orphaned) |
 | Video | `mpv` (orphaned) |
 | Audio | `mpv` (orphaned) |
 
 Because the media openers are `orphan = true`, Yazi remains responsive while `mpv`/`imv`
-runs. Yazi is also preconfigured to `reveal` the file when opening media, so the file stays
-highlighted in the listing.
+runs.
 
-### 8.3 Git integration
+### 7.3 Git integration
 
 The bundled `git.yazi` plugin is used, with `prepend_fetchers` that shell out to `git` for
 any URL. This gives file-status indicators in the listing for git repositories.
 
-### 8.4 Key highlights
+---
 
-`Enter` open · `o` open with chosen opener · `p` paste · `d` delete · `r` rename ·
-`c` copy · `m` move · `a` create · `x` cut · `y` yank · `.` toggle hidden · `s` sort by ·
-`/` filter · `?` help · `q` quit · `<Space>` toggle selection
+## 8. Theming — GTK / Qt / xsettingsd
+
+### 8.1 GTK
+
+`~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini`:
+- Theme: `adw-gtk3` (libadwaita + adw-gtk3 for GTK3 compatibility)
+- Icons: Adwaita
+- Font: Adwaita Sans 11
+- Cursor: Adwaita, size 24
+- Dark theme preferred
+
+`~/.config/gtk-4.0/gtk.css` and `gtk-dark.css` both import `libadwaita.css` and
+`libadwaita-tweaks.css`.
+
+`~/.gtkrc-2.0` is managed by nwg-look and mirrors the GTK3 settings.
+
+### 8.2 Qt
+
+`~/.config/qt5ct/qt5ct.conf` and `~/.config/qt6ct/qt6ct.conf`:
+- Style: Fusion
+- Color scheme: `/usr/share/qt5ct/colors/darker.conf` / qt6ct equivalent
+- Standard dialogs: xdgdesktopportal
+
+### 8.3 xsettingsd
+
+`~/.config/xsettingsd/xsettingsd.conf` propagates theme settings to XWayland apps:
+- Theme: adw-gtk3
+- Icons: Adwaita
+- Cursor: Adwaita
+- Antialiasing/hinting enabled
+
+### 8.4 Fonts
+
+- **JetBrains Mono** — kitty terminal font
+- **Iosevka Nerd Font** — symbol map in kitty
+- **Noto Sans / Noto CJK / Noto Emoji** — system fallback fonts
+- **Font Awesome** (otf + woff2) — icon font
+- **awesome-terminal-fonts** — additional glyphs
 
 ---
-`
 
-## 10. Gotchas and traps
+## 9. Audio — PipeWire + EasyEffects
 
-Things that have already cost time, or will.
+### 9.1 PipeWire
 
-1. **Editing `~/Dotfiles` for niri/nvim/kitty/yazi does nothing until you `rsync`.** Only
-   `.zshrc` and `.p10k.zsh` are symlinked. See [section 2](#2-how-the-dotfiles-are-actually-wired).
+Standard Arch PipeWire setup:
+- `pipewire` — server
+- `pipewire-pulse` — PulseAudio compatibility
+- `pipewire-alsa` — ALSA compatibility
+- `pipewire-jack` — JACK compatibility (skipped if jack2 is installed)
+- `wireplumber` — session manager
+- `pavucontrol` — volume control GUI
 
-2. **Never hand-edit `~/.config/niri/config/colors.kdl` or
-   `~/.config/kitty/colors.conf`.** Both carry a matugen "do not edit" banner and are
-   overwritten whenever the theme or wallpaper changes. Your repo copies are just
-   snapshots. Change the theme through Serpantinum instead.
+### 9.2 EasyEffects
 
-3. **`tree-sitter` CLI is missing**, so the Tree-sitter parser auto-install in `init.lua`
-   never runs. Install it (`sudo pacman -S tree-sitter`) or the intended 22-parser list is
-   never applied.
+Equalizer preset loaded on startup. The equalizer config is in
+`~/.config/easyeffects/db/equalizerrc` — a 31-band EQ with a custom curve.
 
-4. **The bar's Bluetooth module is patched locally.** Upstream `BtWidget.qml` hides itself on
-   any machine with no battery (`isDesktop`, gated via `ls /sys/class/power_supply/BAT*`), so
-   `bt` never renders on a desktop. A `showOnDesktop` property was added to force it visible.
-   A Serpantinum reinstall/update **overwrites this file** and silently reverts the fix —
-   re-apply it, or drop a pristine copy at `BtWidget.qml.orig` (check it is byte-identical to
-   upstream before trusting it).
+The `easyeffects` user service is enabled by niri's `autostart.kdl` on every login.
 
-5. **Niri's default keybindings do not exist on this system.** Only what is in
+### 9.3 Cava
+
+Terminal audio visualizer. Config in `~/.config/cava/config` with a warm gradient
+(`#ffb77a` → `#6b3a05` → `#88511d`). Custom shaders in `shaders/`, themes in `themes/`.
+
+---
+
+## 10. Session utilities
+
+### 10.1 Clipboard
+
+`wl-paste --watch cliphist store` (text and image) started by niri autostart.
+
+### 10.2 OpenRGB
+
+`openrgb.service` — starts the OpenRGB server and runs `rgb-off` to force all RGB devices
+to black/off. The `rgb-off` script targets devices by name (MSI motherboard, Corsair RAM,
+Corsair iCUE hub, Gigabyte GPU, Razer peripherals).
+
+### 10.3 Arknights gallery
+
+`arknights-gallery.service` — a local web server (port 8080) that serves a browsable
+gallery of downloaded Arknights art. Hardened with `ProtectSystem=strict`,
+`NoNewPrivileges`, `MemoryMax=2G`, `CPUWeight=20`.
+
+### 10.4 xdg-desktop-portal
+
+`niri-portals.conf` selects backends:
+- Default: gnome, gtk, wlr
+- Access: gtk
+- Notification: gtk
+- Secret: gnome-keyring
+- Screenshot: wlr
+- ScreenCast: wlr
+
+### 10.5 Custom scripts (`~/.local/bin`)
+
+| Script | Purpose |
+|---|---|
+| `rgb-off` | Force all RGB devices to black/off |
+| `toggle-gtop` | Toggle htop floating window (spawn/focus/close) |
+| `sillytavern` | Launch SillyTavern (node server + browser) |
+| `gallery-dl-launch` | Launch gdltui |
+| `gallery-dl-dispatch` | Dispatch queued downloads |
+| `gdltui` | Booru downloader TUI |
+
+---
+
+## 11. Other software
+
+| Category | Software |
+|---|---|
+| Browser | LibreWolf |
+| Music | Spotify (via spotify-launcher), librespot |
+| Video | Kdenlive |
+| Notes | Obsidian |
+| Archive | Ark |
+| Gaming | PrismLauncher, gamemode, MangoHud, protonup-qt |
+| Dev | Docker, Node.js, OpenJDK 17, clangd |
+| File management | Nautilus, yazi |
+| Media | mpv, imv |
+| Communication | Vesktop (Discord) |
+| Recorder | wf-recorder, gpu-screen-recorder, OBS |
+| Screenshot | satty, grim, slurp |
+
+---
+
+## 12. Gotchas and traps
+
+1. **Niri's default keybindings do not exist on this system.** Only what is in
    `config/keybinds.kdl` is bound — niri does not merge a default `binds` layer. Most
-   consequentially you have **no quit binding** (use `niri msg action quit`) and **no
-   `focus-monitor-*`**, so bind those before adding a second display. See
-   [3.3](#33-niris-default-keybindings-are-not-active).
+   consequentially you have **no quit binding** (use `niri msg action quit`).
 
-6. **`xkb` lists only `"us"`.** `options "grp:alt_shift_toggle"` sets up a group toggle with
+2. **`xkb` lists only `"us"`.** `options "grp:alt_shift_toggle"` sets up a group toggle with
    no second group to toggle to, so `Alt+Shift` currently does nothing. To make it work:
    `layout "us,ca"`, then `Alt+Shift`.
 
-7. **No LSP servers other than clangd are configured, and there is no nvim-lspconfig.**
-   `vim.lsp.config(...)` + `vim.lsp.enable(...)` by hand, then `:Mason` to install.
+3. **`tree-sitter` CLI** is needed for the full parser list in nvim. Install
+   `tree-sitter-cli` (the installer handles it) and run `:TSUpdate`.
 
-8. **`cat` is `bat` with paging disabled.** Piping works, but `bat` will not page. Call
+4. **`cat` is `bat` with paging disabled.** Piping works, but `bat` will not page. Call
    `bat` directly if you want the pager.
 
-9. **Leading space hides a command from history** (`HISTCONTROL=ignoreboth`). Useful for
-   commands with secrets, easy to forget.
+5. **Aliases are not expanded in non-interactive shells.** Scripts, cron jobs and `sh -c`
+   get real `ls`/`cat`. Use `eza`/`bat` explicitly there.
 
-10. **Aliases are not expanded in non-interactive shells.** Scripts, cron jobs and `sh -c`
-    get real `ls`/`cat`. Use `eza`/`bat` explicitly there.
+6. **Kitty is the only terminal configured.** `Mod+Return` opens kitty. The terminal
+   colours (and thus the Neovim colours, which inherit them) come from
+   `~/.config/kitty/colors.conf`.
 
-11. **Kitty is the only terminal configured.** Ghostty/WezTerm/Alacritty/foot are matched by
-    a niri blur rule, so they blur correctly, but `Mod+Return` opens kitty and the terminal
-    colours (and thus the Neovim colours, which inherit them) come from
-    `~/.config/kitty/colors.conf`.
+7. **`~/.p10k.zsh` is a symlink into the repo**, so `p10k configure` writes through to your
+   git working tree. That is intentional, but it will show up as a diff.
 
-12. **`Mod+R` reloads Serpantinum only.** Niri itself live-reloads on save, so just edit
-    `config.kdl` and it applies. For nvim, restart; for Zsh, `source ~/.zshrc`.
+8. **zsh plugins are git clones**, not pacman packages. `zsh-autosuggestions` and
+   `zsh-syntax-highlighting` live in `~/.zsh/`. The installer clones them.
 
-13. **`~/.p10k.zsh` is a symlink into the repo**, so `p10k configure` writes through to your
-    git working tree. That is intentional, but it will show up as a diff.
+9. **The `rgb-off` script targets specific hardware.** It knows about MSI B550-VC, Corsair
+   Vengeance RGB Pro, Corsair iCUE LINK, Gigabyte RX 7600 XT, and Razer peripherals. On
+   different hardware it will skip devices it doesn't recognize.
+
+10. **EasyEffects config has device-specific paths.** `~/.config/easyeffects/db/easyeffectsrc`
+    references specific ALSA device names (e.g., `alsa_input.usb-Generic_Razer_Seiren_V3...`).
+    On different hardware these won't match.
+
+11. **Spotify runs as a native Wayland client** via `spotify-flags.conf`
+    (`--ozone-platform=wayland`). This is needed for window transparency and niri blur.
 
 ---
 
-## 11. Quick reference card
+## 13. Quick reference card
 
 ```
-LAUNCH      Mod+Return kitty      Mod+Space launcher   Mod+F yazi
-            Mod+B firefox         Mod+O opencode
+LAUNCH      Mod+Return kitty      Mod+F yazi
+            Mod+B librewolf       Mod+O opencode
+            Mod+Q calculator      Ctrl+Shift+Esc htop
 
 WINDOW      Mod+W close           Mod+V float          Mod+Shift+F fullscreen
             Mod+T max column      Mod+X preset width   Mod+Backspace overview
 
-NAVIGATE    Mod+←/→ column        Mod+↑/↓ window
-MOVE        Mod+Shift+←/→ col     Mod+Shift+↑/↓ to ws
-RESIZE      Mod+Ctrl+←/→ width     Mod+Ctrl+↑/↓ height
-            Mod+-/= ∓10%          Mod+Shift+-/= height ∓10%
+NAVIGATE    Mod+Left/Right column Mod+Up/Down window
+MOVE        Mod+Shift+Left/Right  Mod+Shift+Up/Down to ws
+RESIZE      Mod+Ctrl+Left/Right   Mod+Ctrl+Up/Down
 
-WORKSPACE   Mod+1..0 go           Mod+Shift+1..0 move
-            Mod+Page+Up/Dn        Mod+Ctrl+1..9 move column
+MEDIA       XF86AudioPlay/Pause   XF86AudioPrev/Next
+            XF86AudioMute         XF86AudioMicMute
+            XF86AudioLower/Raise   XF86MonBrightnessUp/Down
 
-POPOUTS     Mod+P clip   Mod+M music   Mod+S system
-            Mod+C cal    Mod+N net     Mod+Shift+V vol
-            Mod+H guide  Mod+A autohide Mod+Shift+B wallpaper
-
-SYSTEM      Mod+L lock    Mod+R reload Serpantinum   Print screenshot
-            niri msg action quit   (no quit keybound — see §3.3)
+SYSTEM      niri msg action quit  (no quit keybound — see §3.3)
 ```
 
 ```
 SHELL       z foo      jump        zi        interactive picker
             z --clean  purge dead entries
             ll / la    git-aware listings
-            emoji      fzf emoji -> clipboard
+            cat        bat (no paging)
 
 NVIM        <Space>e   explorer    -         parent dir
             <Space>r   compile+run C/C++
@@ -909,14 +746,10 @@ sudo pacman -Syu
 
 # Update dotfiles
 cd ~/Dotfiles && git pull
-# then re-sync niri/nvim/kitty/yazi (section 2)
 
 # Update nvim plugins
 nvim -c 'Lazy update' -c 'qa'
-# or :Lazy -> Update All
 
-# After a Serpantinum update, check the bar Bluetooth patch survived (gotcha 4)
-diff -u ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qml.orig \
-        ~/.local/share/serpantinum/src/quickshell/bar/modules/system/BtWidget.qml
+# Validate niri config
+niri validate
 ```
-

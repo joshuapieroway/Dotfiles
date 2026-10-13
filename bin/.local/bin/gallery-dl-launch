@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "/home/delta/.local/lib/gdltui/launch.sh" "$@"

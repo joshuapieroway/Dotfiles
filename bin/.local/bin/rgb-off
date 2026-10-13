@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Force every RGB device on this machine to black/off.
+#
+# Targets devices by NAME, not index, so it keeps working when detection
+# order changes between boots.
+#
+# VERIFIED CONTROLLABLE (writes confirmed to reach the hardware):
+#   MSI PRO B550-VC motherboard      HID 1462:7c56, has Output/Feature reports
+#   Gigabyte RX 7600 XT GPU          SMBus 0x55 on the AMDGPU DM i2c OEM bus
+#   Corsair Vengeance RGB Pro RAM    SMBus 0x5A/0x5B
+#   Corsair iCUE LINK hub + QX fans  HID 1b1c:0c3f
+#
+# NOT CONTROLLABLE - commands are accepted but silently do nothing:
+#   Razer Basilisk V2 / Cynosa V2 / Seiren V3 Chroma
+#   Their HID report descriptors come back truncated mid-item (90 bytes,
+#   ending on a dangling Report Count byte) and advertise zero Output or
+#   Feature reports. A read probe returns EINVAL for every report ID on every
+#   interface. OpenRGB still exits 0 and updates its "current mode", so the
+#   OK lines below are NOT proof these worked. OpenRGB 1.0 additionally has
+#   no driver at all for the Seiren V3 Chroma (1532:056f).
+#   Their lighting is set by the onboard profile; see the udev rule in
+#   /etc/udev/rules.d/99-openrgb-seiren-v3.rules.
+#
+# NOT RGB AT ALL - no controller exists, no software can change these:
+#   Case power button  - 2-pin front-panel switch, fixed LED
+#   GPU power cables   - fixed indicator LEDs, no host control
+set -uo pipefail
+
+HOST=127.0.0.1
+PORT=6742
+LOG=${XDG_STATE_HOME:-$HOME/.local/state}/rgb-off.log
+
+mkdir -p "$(dirname "$LOG")"
+
+log() { printf '%s %s\n' "$(date '+%F %T')" "$*" >>"$LOG"; }
+
+orb() { openrgb --client "$HOST:$PORT" "$@"; }
+
+# Every controller we intend to touch. Detection registers these over several
+# seconds, so we wait for all of them by name rather than for a device count.
+EXPECTED=(
+    "MSI PRO B550-VC"
+    "Razer Cynosa Chroma V2"
+    "Razer Basilisk V2"
+    "Corsair iCUE Link System Hub"
+    "Corsair Vengeance RGB Pro DDR4"
+    "Gigabyte Radeon RX 7600 XT GAMING OC 16G"
+)
+
+wait_for_server() {
+    local i listing want got
+    for i in $(seq 1 90); do
+        listing=$(orb --list-devices 2>/dev/null)
+        got=0
+        for want in "${EXPECTED[@]}"; do
+            grep -qF "$want" <<<"$listing" && got=$((got + 1))
+        done
+        if [ "$got" -eq "${#EXPECTED[@]}" ]; then
+            log "server ready, all ${#EXPECTED[@]} controllers present"
+            return 0
+        fi
+        sleep 1
+    done
+    log "WARN: only $got/${#EXPECTED[@]} controllers appeared within 90s; applying anyway"
+    return 0
+}
+
+wait_for_server
+
+apply() {
+    local label=$1 needle=$2; shift 2
+    if ! grep -qF "$needle" <<<"$LISTING"; then
+        log "SKIP $label (device not detected)"
+        return
+    fi
+    if orb "$@" >/dev/null 2>&1; then
+        log "OK   $label"
+    else
+        log "FAIL $label"
+    fi
+}
+
+LISTING=$(orb --list-devices 2>/dev/null)
+
+# Motherboard (Mystic Light): no "Off" mode, so pin a static black instead.
+apply "MSI PRO B550-VC -> static black" "MSI PRO B550-VC" -d "MSI PRO B550" -m static -c 000000
+# Razer peripherals expose a true Off mode.
+apply "Razer Cynosa V2   -> off"         "Razer Cynosa Chroma V2" -d "Cynosa"   -m off
+apply "Razer Basilisk V2 -> off"         "Razer Basilisk V2"      -d "Basilisk" -m off
+# Corsair iCUE LINK + Vengeance RGB RAM only expose Direct, so write black.
+apply "Corsair iCUE LINK -> black"       "Corsair iCUE Link System Hub" -d "iCUE Link" -c 000000
+apply "Corsair RAM      -> black"       "Corsair Vengeance RGB Pro DDR4" -d "Vengeance" -c 000000
+# Gigabyte RGB Fusion 2 on the GPU (PCI subsystem 0x1458). No "Static" mode on
+# this card, so Direct black is the only way in.
+apply "Gigabyte GPU     -> black"       "Gigabyte Radeon RX 7600 XT" -d "Gigabyte" -c 000000
+
+log "done"

@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenRGB server (RGB forced off on all devices)
+Documentation=https://openrgb.org
+After=graphical-session.target
+PartOf=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/openrgb --server --noautoconnect --loglevel 2
+ExecStartPost=/home/delta/.local/bin/rgb-off
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
